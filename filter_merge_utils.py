@@ -8,7 +8,7 @@ import pandas as pd
 
 from pandora.custom_types import *
 
-from .config import *
+from config import *
 
 
 def merge_datasets(
