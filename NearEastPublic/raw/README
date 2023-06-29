@@ -1,0 +1,59 @@
+This dataset includes present-day and ancient genotype data as described in Lazaridis et al. (2016) in PACKEDANCESTRYMAP format.
+You may convert this data to other formats using the "convertf" utility of EIGENSOFT (https://data.broadinstitute.org/alkesgroup/EIGENSOFT/).
+You may use ADMIXTUOOLS (https://github.com/DReichLab/AdmixTools) for different types of analysis over this data.
+Each dataset includes three files *.geno (genotype data), *.ind (individual data), *.snp (SNP data).
+
+(1) Present-day Human Origins data
+
+HumanOriginsPublic2068.*
+(621799 SNPs, 2068 individuals)
+
+The full dataset of 2,583 individuals includes samples that cannot be posted in public.
+File "Permissions.txt" records the permission status of each individual which can be "Public" "Signed_Letter" or "Restrictive_Signed_Letter".
+
+Since our research permits for the collection of the samples analyzed in this dataset only cover studies of population prehistory, we have to stipulate some conditions before granting access to the data, as follows:
+
+To access this dataset, you need to send David Reich (reich[at]genetics.med.harvard.edu) a PDF of a Signed_Letter containing the following language: 
+
+(a) I will not distribute the samples marked "Signed_Letter" outside my collaboration, 
+(b) I will not post data from the sampels marked "Signed_Letter" publicly 
+(c) I will make no attempt to connect the genetic data for the samples marked "Signed_Letter" to personal identifiers
+(d) I will use the data from the samples marked "Signed_Letter" only for studies of population history
+(e) I will not use the data for samples marked "Signed_Letter" for commercial purposes
+(f) I will not use the data from any samples marked "Restrictive_Signed_Letter" for studies of selection
+(g) I will not use the data from any samples marked "Restricted Signed Letter" for medically or disease related analyses
+
+(2) Ancient sample data
+
+AncientLazaridis2016.*
+(1233553 SNPs, 294 individuals)
+
+This dataset includes (see study for the source of the different samples):
+- 281 ancient Eurasian individuals, including 45 newly reported in this study
+- AG2 (Afontova Gora 2), a (contaminated) Upper Paleolithic Siberian individual 
+- Archaic humans (Altai Neanderthal, Denisovan, MeZ, Vi_merge)
+- Mota, an ancient East African individual
+- Clovis, Kennewick, ancient Native American individuals
+- Sequencing data on 3 present-day Mbuti Pygmies from the Simons Genome Diversity Project (SGDP) used to compute the statistic f4(Test, Mbuti; Altai, Denisovan) on the HOIll dataset
+- The human reference
+- Chimp
+
+All analyses in our paper used this data except for Y-chromosome analysis in which we applied different filtering criteria (Supplementary Information, section 6)
+
+(3) Auxiliary files
+
+HOIll.snp:  	1055186 SNPs used for analysis of ancient individuals alone (Methods)
+HO.snp:      	592146 SNPs used for co-analysis of ancient and present-day individuals (Methods). 
+		You may merge the present-day and ancient datasets using the "mergeit" utility of EIGENSOFT (https://data.broadinstitute.org/alkesgroup/EIGENSOFT/).
+
+NewStudy.ids:	IDs of 45 ancient individuals first reported here. (This includes data on 44 Hunter-Gatherer-to-Bronze Age individuals and 1 Iran_recent individual). For details, see Supplementary Data Table 1
+NewModern.ids:	IDs of 238 present-day individuals first reported here. For details, see Supplementary Data Table 2
+
+(4) BAM files
+
+You may find sequence read data on the 45 ancient individuals first reported here in the European Nucleotide Archive (https://www.ebi.ac.uk/ena/) under accession number PRJEB14455
+
+For questions and issues regarding this dataset, please contact Iosif Lazaridis (lazaridis[at]genetics.med.harvard.edu)
+
+I. Lazaridis et al. "Genomic insights into the origin of farming in the ancient Near East". Nature (2016). doi:10.1038/nature19310
+(data first released with preprint of the above paper: I. Lazaridis et al. (2016) "The genetic structure of the world's first farmers". doi: http://dx.doi.org/10.1101/059311 http://biorxiv.org/content/early/2016/06/16/059311)

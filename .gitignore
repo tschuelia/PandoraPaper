@@ -1,4 +1,6 @@
-NearEastPublic/
+*.geno
+*.ind
+*.snp
 
 *.bundle.*
 lib/
