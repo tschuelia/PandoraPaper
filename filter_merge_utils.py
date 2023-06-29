@@ -8,9 +8,7 @@ import pandas as pd
 
 from pandora.custom_types import *
 
-MERGEIT = "/Users/julia/micromamba/envs/pca_micromamba/bin/mergeit"
-CONVERTF = "/Users/julia/micromamba/envs/pca_micromamba/bin/convertf"
-SMARTPCA = "/Users/julia/micromamba/envs/pca_micromamba/bin/smartpca"
+from .config import *
 
 
 def merge_datasets(
