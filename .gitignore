@@ -1,6 +1,7 @@
 *.geno
 *.ind
 *.snp
+results/
 
 *.bundle.*
 lib/

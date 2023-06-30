@@ -1,5 +1,5 @@
 bootstrap: true
-convertf: /Users/julia/micromamba/envs/pca_micromamba/bin/convertf
+convertf: /home/schmidja/software/EIG-8.0.0/bin/convertf
 dataset_prefix: NearEastPublic/westEurasia/HumanOriginsPublic2068.westEurasian
 file_format: ANCESTRYMAP
 keep_bootstraps: false
@@ -7,6 +7,6 @@ n_bootstraps: 100
 n_pcs: 20
 result_dir: NearEastPublic/westEurasia/results
 seed: 0
-smartpca: /Users/julia/micromamba/envs/pca_micromamba/bin/smartpca
+smartpca: /home/schmidja/software/EIG-8.0.0/bin/smartpca
 smartpca_optional_settings:
   numoutlieriter: 0
