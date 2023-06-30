@@ -1,0 +1,12 @@
+bootstrap: true
+convertf: /Users/julia/micromamba/envs/pca_micromamba/bin/convertf
+dataset_prefix: MathiesonEtAl_genotypes/westEurasian_ancient/Mathieson230_ModernWestEurasia
+file_format: ANCESTRYMAP
+keep_bootstraps: false
+n_bootstraps: 100
+n_pcs: 20
+pca_populations: MathiesonEtAl_genotypes/westEurasian_ancient/modern.poplist.txt
+result_dir: MathiesonEtAl_genotypes/westEurasian_ancient/results
+seed: 0
+smartpca: /Users/julia/micromamba/envs/pca_micromamba/bin/smartpca
+smartpca_optional_settings: {}
