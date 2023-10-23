@@ -1,7 +1,10 @@
-*.geno
-*.ind
-*.snp
+datasets/*
+!*.ipynb
+
 results/
+
+**/.snakemake
+
 
 *.bundle.*
 lib/
