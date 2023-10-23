@@ -26,7 +26,7 @@ converted_dataset_prefix = conversion_prefix / dataset_name
 pandora_no_convergence = outdir / "pandora_no_convergence"
 pandora_with_convergence = outdir / "pandora_with_convergence"
 
-runtime_regex = re.compile(".*\((\d+) seconds\)")
+runtime_regex = re.compile(r".*\((\d+) seconds\)")
 
 
 def get_base_config(result_dir):
@@ -66,13 +66,13 @@ rule convert_dataset:
                 file_format=file_format
             )
         else:
-            snp_in = pathlib.Path(f"{dataset_prefix}.snp")
+            snp_in = f"{dataset_prefix}.snp"
             shutil.copy(snp_in, output.converted_snp)
 
-            geno_in = pathlib.Path(f"{dataset_prefix}.geno")
+            geno_in = f"{dataset_prefix}.geno"
             shutil.copy(geno_in, output.converted_geno)
 
-            ind_in = pathlib.Path(f"{dataset_prefix}.ind")
+            ind_in = f"{dataset_prefix}.ind"
             shutil.copy(ind_in, output.converted_ind)
 
 
