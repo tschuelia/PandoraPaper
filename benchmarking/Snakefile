@@ -61,7 +61,7 @@ rule convert_dataset:
         file_format = FileFormat(config["dataset_format"])
         if file_format != FileFormat.EIGENSTRAT:
             convert_to_eigenstrat_format(
-                convertf=config["convertf"],
+                convertf=config.get("convertf", "convertf"),
                 convertf_result_dir=conversion_prefix,
                 dataset_prefix=dataset_prefix,
                 file_format=file_format
