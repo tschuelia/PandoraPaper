@@ -15,19 +15,18 @@ from pandora.pandora import convert_to_eigenstrat_format, PandoraConfig
 
 
 dataset_prefix = pathlib.Path(config["dataset_prefix"])
+dataset_name = config.get("dataset_name", dataset_prefix.name)
+
 outdir_base = pathlib.Path(config["outdir_base"])
-outdir = outdir_base / dataset_prefix.name
+outdir = outdir_base / dataset_name
 
 conversion_prefix = outdir / "convertf"
-converted_dataset_prefix = conversion_prefix / dataset_prefix.name
+converted_dataset_prefix = conversion_prefix / dataset_name
 
 pandora_no_convergence = outdir / "pandora_no_convergence"
 pandora_with_convergence = outdir / "pandora_with_convergence"
 
 runtime_regex = re.compile(".*\((\d+) seconds\)")
-
-
-dataset_name = config.get("dataset_name", dataset_prefix.name)
 
 
 def get_base_config(result_dir):
