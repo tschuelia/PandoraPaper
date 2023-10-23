@@ -53,9 +53,9 @@ rule all:
 
 rule convert_dataset:
     output:
-        converted_snp = pathlib.Path(f"{converted_dataset_prefix}.snp"),
-        converted_ind = pathlib.Path(f"{converted_dataset_prefix}.ind"),
-        converted_geno = pathlib.Path(f"{converted_dataset_prefix}.geno")
+        converted_snp = f"{converted_dataset_prefix}.snp",
+        converted_ind = f"{converted_dataset_prefix}.ind",
+        converted_geno = f"{converted_dataset_prefix}.geno"
     run:
         file_format = FileFormat(config["dataset_format"])
         if file_format != FileFormat.EIGENSTRAT:
