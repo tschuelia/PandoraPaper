@@ -2,6 +2,7 @@ import pathlib
 import re
 import tempfile
 import shutil
+import multiprocessing
 
 import pandas as pd
 import yaml
@@ -38,10 +39,9 @@ def get_base_config(result_dir):
         embedding_populations=config.get("embedding_populations"),
         smartpca=config.get("smartpca", "smartpca"),
         convertf=config.get("convertf", "convertf"),
-        redo = True,
-        seed = 0,
-        # TODO: remove for actual datasets
-        n_components = 2,
+        redo=True,
+        seed=0,
+        threads=config.get("threads", multiprocessing.cpu_count())
         )
     )
 
