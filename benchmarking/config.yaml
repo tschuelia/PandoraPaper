@@ -1,13 +1,9 @@
-#dataset_prefix: /Users/julia/Downloads/admixtools2/data/panel7
-#dataset_format: ANCESTRYMAP
-
 dataset_prefix: /Users/julia/Desktop/Promotion/ADNA_Popgen/Pandora/tests/data/example
 dataset_format: EIGENSTRAT
 
-outdir_base: /tmp/
-
-smartpca: /Users/julia/micromamba/envs/pca_micromamba/bin/smartpca
-convertf: /Users/julia/micromamba/envs/pca_micromamba/bin/convertf
+outdir_base: /tmp/results
 
 smartpca_optional_settings:
   numoutlieriter: 0
+
+threads: 8
