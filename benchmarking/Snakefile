@@ -142,7 +142,7 @@ rule pandora_with_convergence_check_lower_confidence_level_fewer_cores:
         pandora_log = pandora_low_convergence_fewer_cores / "pandora.log",
         support_values = pandora_low_convergence_fewer_cores / "pandora.supportValues.csv"
     log:
-        logfile = outdir / "with_convergence_lower_confidence.log"
+        logfile = outdir / "with_convergence_lower_confidence_fewer_cores.log"
     run:
         pandora_config: PandoraConfig = get_base_config(pandora_low_convergence_fewer_cores)
         # set confidence level to 0.05
@@ -162,7 +162,7 @@ rule pandora_with_convergence_check_higher_confidence_level:
         pandora_log = pandora_high_convergence / "pandora.log",
         support_values = pandora_high_convergence / "pandora.supportValues.csv"
     log:
-        logfile = outdir / "with_convergence_lower_confidence.log"
+        logfile = outdir / "with_convergence_higher_confidence.log"
     run:
         pandora_config: PandoraConfig = get_base_config(pandora_high_convergence)
         # set confidence level to 0.01
