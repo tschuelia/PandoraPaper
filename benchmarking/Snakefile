@@ -18,8 +18,11 @@ from pandora.dataset import EigenDataset
 dataset_prefix = pathlib.Path(config["dataset_prefix"])
 dataset_name = config.get("dataset_name", dataset_prefix.name)
 
-outdir_base = pathlib.Path(config["outdir_base"])
-outdir = outdir_base / dataset_name
+final_outdir_base = pathlib.Path(config["outdir_base"])
+final_outdir = final_outdir_base / dataset_name
+
+# hack for our lab servers to circumvent runtime fluctuations due to the slow file system and file system hiccups...
+outdir = pathlib.Path(dataset_name)
 
 conversion_prefix = outdir / "convertf"
 converted_dataset_prefix = conversion_prefix / dataset_name
@@ -32,7 +35,7 @@ pandora_high_convergence = outdir / "pandora_high_convergence"
 runtime_regex = re.compile(r".*\((\d+) seconds\)")
 
 
-def get_base_config(result_dir):
+def _get_base_config(result_dir):
     return PandoraConfig.model_validate(
         dict(dataset_prefix=converted_dataset_prefix,
         result_dir=result_dir,
@@ -49,7 +52,7 @@ def get_base_config(result_dir):
     )
 
 
-def run_pandora(pandora_config, logfile):
+def _run_pandora(pandora_config, logfile):
     pandora_config_yaml = yaml.safe_dump(pandora_config.get_configuration())
 
     with tempfile.NamedTemporaryFile(mode="w") as f:
@@ -67,9 +70,47 @@ def run_pandora(pandora_config, logfile):
         shell(" ".join(cmd))
 
 
+def _parse_results_from_log(logfile: str, key_suffix: str):
+    data = dict()
+
+    for line in open(logfile):
+        line = line.strip()
+        if line.startswith("Pandora Stability:"):
+            _, ps = line.rsplit(maxsplit=1)
+            data[f"stability_{key_suffix}"] = float(ps)
+        elif line.startswith("Pandora Cluster Stability:"):
+            _, pcs = line.rsplit(maxsplit=1)
+            data[f"cluster_stability_{key_suffix}"] = float(pcs)
+        elif line.startswith("Total runtime"):
+            # Total runtime: 0:00:45 (45 seconds)
+            m = re.match(runtime_regex, line)
+            if m:
+                data[f"runtime_{key_suffix}"] = int(m.group(1))
+        elif line.startswith("> Number of replicates computed:"):
+            _, n_bootstraps = line.rsplit(maxsplit=1)
+            data[f"n_bootstraps_{key_suffix}"] = int(n_bootstraps)
+        elif line.startswith("threads:"):
+            _, threads = line.rsplit(maxsplit=1)
+            data[f"threads_{key_suffix}"] = int(threads)
+        elif line.startswith("bootstrap_convergence_confidence_level:"):
+            _, level = line.rsplit(maxsplit=1)
+            data[f"level_{key_suffix}"] = float(level)
+    return data
+
+
+def _compare_support_values(psv_no_convergence, psv_with_convergence):
+    shared_sample_ids = list(set(psv_no_convergence.index) & set(psv_with_convergence.index))
+
+    psv_no_convergence = psv_no_convergence.loc[shared_sample_ids]
+    psv_with_convergence = psv_with_convergence.loc[shared_sample_ids]
+
+    return pearsonr(psv_no_convergence.PSV,psv_with_convergence.PSV)
+
+
+
 rule all:
     input:
-        outdir / "results.parquet"
+        final_outdir / "results.parquet"
 
 
 rule convert_dataset:
@@ -108,11 +149,11 @@ rule pandora_no_convergence_check:
     log:
         logfile = outdir / "no_convergence.log"
     run:
-        pandora_config: PandoraConfig = get_base_config(pandora_no_convergence)
+        pandora_config: PandoraConfig = _get_base_config(pandora_no_convergence)
         # disable the automatic convergence check
         pandora_config.bootstrap_convergence_check = False
 
-        run_pandora(pandora_config, log.logfile)
+        _run_pandora(pandora_config, log.logfile)
 
 
 rule pandora_with_convergence_check_lower_confidence_level:
@@ -126,10 +167,10 @@ rule pandora_with_convergence_check_lower_confidence_level:
     log:
         logfile = outdir / "with_convergence_lower_confidence.log"
     run:
-        pandora_config: PandoraConfig = get_base_config(pandora_low_convergence)
+        pandora_config: PandoraConfig = _get_base_config(pandora_low_convergence)
         # set confidence level to 0.05
         pandora_config.bootstrap_convergence_confidence_level = 0.05
-        run_pandora(pandora_config, log.logfile)
+        _run_pandora(pandora_config, log.logfile)
 
 
 rule pandora_with_convergence_check_lower_confidence_level_fewer_cores:
@@ -143,13 +184,13 @@ rule pandora_with_convergence_check_lower_confidence_level_fewer_cores:
     log:
         logfile = outdir / "with_convergence_lower_confidence_fewer_cores.log"
     run:
-        pandora_config: PandoraConfig = get_base_config(pandora_low_convergence_fewer_cores)
+        pandora_config: PandoraConfig = _get_base_config(pandora_low_convergence_fewer_cores)
         # set confidence level to 0.05
         pandora_config.bootstrap_convergence_confidence_level = 0.05
         # set number of cores to half the number of cores
         pandora_config.threads = int(pandora_config.threads / 2)
         print("THREADS ", pandora_config.threads)
-        run_pandora(pandora_config, log.logfile)
+        _run_pandora(pandora_config, log.logfile)
 
 
 rule pandora_with_convergence_check_higher_confidence_level:
@@ -163,7 +204,7 @@ rule pandora_with_convergence_check_higher_confidence_level:
     log:
         logfile = outdir / "with_convergence_higher_confidence.log"
     run:
-        pandora_config: PandoraConfig = get_base_config(pandora_high_convergence)
+        pandora_config: PandoraConfig = _get_base_config(pandora_high_convergence)
         # set confidence level to 0.01
         pandora_config.bootstrap_convergence_confidence_level = 0.01
         pandora_config_yaml = yaml.safe_dump(pandora_config.get_configuration())
@@ -181,43 +222,6 @@ rule pandora_with_convergence_check_higher_confidence_level:
             ]
 
             shell(" ".join(cmd))
-
-
-def _parse_results_from_log(logfile: str, key_suffix: str):
-    data = dict()
-
-    for line in open(logfile):
-        line = line.strip()
-        if line.startswith("Pandora Stability:"):
-            _, ps = line.rsplit(maxsplit=1)
-            data[f"stability_{key_suffix}"] = float(ps)
-        elif line.startswith("Pandora Cluster Stability:"):
-            _, pcs = line.rsplit(maxsplit=1)
-            data[f"cluster_stability_{key_suffix}"] = float(pcs)
-        elif line.startswith("Total runtime"):
-            # Total runtime: 0:00:45 (45 seconds)
-            m = re.match(runtime_regex, line)
-            if m:
-                data[f"runtime_{key_suffix}"] = int(m.group(1))
-        elif line.startswith("> Number of replicates computed:"):
-            _, n_bootstraps = line.rsplit(maxsplit=1)
-            data[f"n_bootstraps_{key_suffix}"] = int(n_bootstraps)
-        elif line.startswith("threads:"):
-            _, threads = line.rsplit(maxsplit=1)
-            data[f"threads_{key_suffix}"] = int(threads)
-        elif line.startswith("bootstrap_convergence_confidence_level:"):
-            _, level = line.rsplit(maxsplit=1)
-            data[f"level_{key_suffix}"] = float(level)
-    return data
-
-
-def _compare_support_values(psv_no_convergence, psv_with_convergence):
-    shared_sample_ids = list(set(psv_no_convergence.index) & set(psv_with_convergence.index))
-
-    psv_no_convergence = psv_no_convergence.loc[shared_sample_ids]
-    psv_with_convergence = psv_with_convergence.loc[shared_sample_ids]
-
-    return pearsonr(psv_no_convergence.PSV,psv_with_convergence.PSV)
 
 
 rule collect_results:
@@ -281,3 +285,16 @@ rule collect_results:
         # write data as dataframe parquet
         results = pd.DataFrame(data=results, index=[0])
         results.to_parquet(output.results)
+
+
+rule copy_results:
+    """This rule is a hack to circumvent our slow shared file system at our Lab servers sometimes causing "wrong"
+    runtime benchmarks due to e.g. hiccups...
+    """
+    input:
+        # we don't actually need this, but we need it as indicator of the finished computation
+        rules.collect_results.output.results
+    output:
+        final_outdir / "results.parquet"
+    shell:
+        f"mv {outdir} {final_outdir_base}"
