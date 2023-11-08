@@ -2,12 +2,12 @@ import pathlib
 import subprocess
 import tempfile
 import textwrap
-import yaml
-from typing import List, Dict
+from typing import List
 
 import pandas as pd
 
-from config import *
+CONVERTF = "convertf"
+MERGEIT = "mergeit"
 
 
 def merge_datasets(
