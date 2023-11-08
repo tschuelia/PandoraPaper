@@ -11,7 +11,8 @@ from scipy.stats import pearsonr
 configfile: "config.yaml"
 
 from pandora.custom_types import FileFormat
-from pandora.pandora import convert_to_eigenstrat_format, PandoraConfig
+from pandora.converter import run_convertf
+from pandora.pandora import PandoraConfig
 from pandora.dataset import EigenDataset
 
 
@@ -121,11 +122,12 @@ rule convert_dataset:
     run:
         file_format = FileFormat(config["dataset_format"])
         if file_format != FileFormat.EIGENSTRAT:
-            convert_to_eigenstrat_format(
+            run_convertf(
                 convertf=config.get("convertf", "convertf"),
-                convertf_result_dir=conversion_prefix,
-                dataset_prefix=dataset_prefix,
-                file_format=file_format
+                in_prefix=dataset_prefix,
+                in_format=file_format,
+                out_prefix=converted_dataset_prefix,
+                out_format=FileFormat.EIGENSTRAT
             )
         else:
             snp_in = f"{dataset_prefix}.snp"
