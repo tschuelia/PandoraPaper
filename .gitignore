@@ -2,7 +2,7 @@ datasets/*
 !*.ipynb
 !*.py
 
-results/
+**/results_benchmark/
 
 **/.snakemake
 
