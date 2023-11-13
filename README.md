@@ -28,8 +28,13 @@ In this repo we further provide the Snakemake pipeline we used to generate all P
     In this case, only install snakemake using conda and follow the instructions in the [Pandora wiki](https://pandorageno.readthedocs.io/en/latest/install.html#installing-eigensoft-on-macbooks-with-m1-m2-chips) to install EIGENSOFT.
 
 2. Next, you need to configure the snakemake pipeline according to the dataset you want to analyze. You can do so by modifying the `config.yaml` file. See the provided `config.yaml` for hints on the allowed settings.
-3. 
-
+3. Run the pipeline in dry-run mode to see what rules will be run and what files created: `snakemake -n`
+4. Finally, run the pipeline using `snakemake -c1`. Note that using `c1` ensures that all rules are executed sequentially. This is required to make sure that all benchmarks are correct and don't influence each other.
+5. You can load the resulting `results.parquet` file using pandas:
+   ```python
+   import pandas as pd
+   df = pd.read_parquet("results.parquet")
+   ```
 
 
 
