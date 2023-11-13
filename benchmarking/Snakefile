@@ -10,7 +10,7 @@ from scipy.stats import pearsonr
 
 configfile: "config.yaml"
 
-from pandora.custom_types import FileFormat
+from pandora.custom_types import FileFormat, EmbeddingAlgorithm
 from pandora.converter import run_convertf
 from pandora.pandora import PandoraConfig
 from pandora.dataset import EigenDataset
@@ -41,6 +41,8 @@ def _get_base_config(result_dir):
         dict(dataset_prefix=converted_dataset_prefix,
         result_dir=result_dir,
         n_replicates=100,
+        embedding_algorithm=EmbeddingAlgorithm(config.get("embedding_algorithm", "PCA")),
+        n_components=config.get("n_components", 2),
         smartpca_optional_settings=config.get("smartpca_optional_settings"),
         embedding_populations=config.get("embedding_populations"),
         smartpca=config.get("smartpca", "smartpca"),
