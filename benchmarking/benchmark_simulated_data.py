@@ -28,6 +28,7 @@ from scipy.stats import pearsonr
 N_REPLICATES = 100
 N_THREADS = 8
 EMBEDDING = EmbeddingAlgorithm.PCA
+REDO = False
 # CONFIG END
 
 SIMULATED_DATA = pathlib.Path("../datasets/simulated_data/simulation")
@@ -159,6 +160,7 @@ def run_dataset(
     dataset_r_path: pathlib.Path,
     load_function: Callable[[pathlib.Path], NumpyDataset],
     outfile: pathlib.Path,
+    redo: bool = False
 ) -> None:
     """
     Perform and benchmark the following runs:
@@ -167,6 +169,8 @@ def run_dataset(
     3. Convergence check with high confidence limit (0.01) and N_THREADS
     4. Convergence check with low confidence limit (0.05) and N_THREADS // 2
     """
+    if outfile.exists() and not redo:
+        return
 
     dataset = load_function(dataset_r_path)
     results = {
@@ -250,22 +254,16 @@ def run_dataset(
 
 
 if __name__ == "__main__":
-    for pth in SIMULATED_DATA.iterdir():
-        if "replicate" in pth.name:
-            continue
-        print("RUNNING: ", pth.stem)
-        outfile = OUTDIR / pth.stem
-        try:
-            run_dataset(pth, load_simulated_data, outfile)
-        except:
-            print("error running ", pth.stem)
-
-    for pth in SIMULATED_MISSING_DATA.iterdir():
-        if "rand" not in pth.name:
-            continue
-        print("RUNNING: ", pth.stem)
-        outfile = OUTDIR / pth.stem
-        try:
-            run_dataset(pth, load_missing_data, outfile)
-        except:
-            print("error running ", pth.stem)
+    for directory, load_method, exclusion_criterion in [
+        (SIMULATED_DATA, load_simulated_data, lambda pth: "replicate" in pth.name),
+        (SIMULATED_MISSING_DATA, load_missing_data, lambda pth: "rand" not in pth.name)
+    ]:
+        for pth in directory.iterdir():
+            if exclusion_criterion(pth):
+                continue
+            print("RUNNING: ", pth.stem)
+            outfile = OUTDIR / pth.stem
+            try:
+                run_dataset(pth, load_method, outfile, REDO)
+            except Exception as e:
+                print("error running ", pth.stem, e)
