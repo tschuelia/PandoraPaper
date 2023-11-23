@@ -268,7 +268,7 @@ rule collect_results:
         results["pearson_correlation_statistic_conv_low"] = psv_corr_low.statistic
         results["pearson_correlation_pvalue_conv_low"] = psv_corr_low.pvalue
 
-        # results lower confidence level 0.01
+        # results higher confidence level 0.01
         results_with_convergence_high = _parse_results_from_log(input.pandora_log_with_convergence_higher_level, "conv_high")
         results.update(results_with_convergence_high)
         results["speedup_conv_high"] = results["runtime_no_conv"] / results["runtime_conv_high"]
