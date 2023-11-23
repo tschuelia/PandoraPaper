@@ -40,7 +40,7 @@ def _get_base_config(result_dir):
     return PandoraConfig.model_validate(
         dict(dataset_prefix=converted_dataset_prefix,
         result_dir=result_dir,
-        n_replicates=100,
+        n_replicates=config.get("n_replicates", 100),
         embedding_algorithm=EmbeddingAlgorithm(config.get("embedding_algorithm", "PCA")),
         n_components=config.get("n_components", 2),
         smartpca_optional_settings=config.get("smartpca_optional_settings"),
