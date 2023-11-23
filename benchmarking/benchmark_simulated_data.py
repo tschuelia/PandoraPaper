@@ -256,3 +256,10 @@ if __name__ == "__main__":
         print("RUNNING: ", pth.stem)
         outfile = OUTDIR / pth.stem
         run_dataset(pth, load_simulated_data, outfile)
+
+    for pth in SIMULATED_MISSING_DATA.iterdir():
+        if "rand" not in pth.name:
+            continue
+        print("RUNNING: ", pth.stem)
+        outfile = OUTDIR / pth.stem
+        run_dataset(pth, load_missing_data, outfile)
