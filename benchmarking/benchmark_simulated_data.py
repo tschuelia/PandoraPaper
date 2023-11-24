@@ -98,6 +98,7 @@ def _get_bootstraps_mds(
         seed=0,
         threads=threads,
         distance_metric=fst_population_distance,
+        imputation=None,
         bootstrap_convergence_check=bootstrap_convergence_check,
         bootstrap_convergence_confidence_level=bootstrap_convergence_confidence_level,
     )
