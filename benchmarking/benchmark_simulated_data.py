@@ -12,6 +12,7 @@ wget https://github.com/xuelingyi/missing_data_PCA/raw/main/simulation.zip && un
 wget https://github.com/xuelingyi/missing_data_PCA/raw/main/MISSdata.zip && unzip MISSdata.zip && rm MISSdata.zip
 """
 import pathlib
+import pickle
 import time
 from typing import Any, Callable, Dict, List
 
@@ -26,15 +27,17 @@ from scipy.stats import pearsonr
 
 # CONFIG
 N_REPLICATES = 100
-N_THREADS = 8
+N_THREADS = 20
 EMBEDDING = EmbeddingAlgorithm.PCA
 REDO = False
+IDENTIFIER = "pca"
+PCA_N_COMPONENTS = 2
 # CONFIG END
 
 SIMULATED_DATA = pathlib.Path("../datasets/simulated_data/simulation")
 SIMULATED_MISSING_DATA = pathlib.Path("../datasets/simulated_data/MISSdata")
 
-OUTDIR = pathlib.Path("results_benchmark") / "simulated_data"
+OUTDIR = pathlib.Path("results_benchmark") / "simulated_data" / IDENTIFIER
 OUTDIR.mkdir(exist_ok=True, parents=True)
 
 
@@ -73,7 +76,7 @@ def _get_bootstraps_pca(
         dataset=dataset,
         n_bootstraps=N_REPLICATES,
         embedding=EmbeddingAlgorithm.PCA,
-        n_components=10,
+        n_components=PCA_N_COMPONENTS,
         seed=0,
         threads=threads,
         bootstrap_convergence_check=bootstrap_convergence_check,
@@ -111,32 +114,53 @@ def _compare_support_values(psv_no_convergence, psv_with_convergence):
     return pearsonr(psv_no_convergence.values, psv_with_convergence.values)
 
 
-def run_pandora(
-    dataset: NumpyDataset,
-    threads: int,
-    bootstrap_convergence_check: bool,
-    bootstrap_convergence_confidence_level: float,
-    key_suffix: str,
-) -> (Dict[str, Any], pd.Series):
-    data = dict()
-
+def _get_bootstraps(dataset: NumpyDataset, threads: int, bootstrap_convergence_check: bool,
+    bootstrap_convergence_confidence_level: float):
     if EMBEDDING == EmbeddingAlgorithm.PCA:
-        bs_start = time.perf_counter()
         bootstraps = _get_bootstraps_pca(
             dataset,
             threads,
             bootstrap_convergence_check,
             bootstrap_convergence_confidence_level,
         )
-        comparison = BatchEmbeddingComparison([b.pca for b in bootstraps])
     elif EMBEDDING == EmbeddingAlgorithm.MDS:
-        bs_start = time.perf_counter()
         bootstraps = _get_bootstraps_mds(
             dataset,
             threads,
             bootstrap_convergence_check,
             bootstrap_convergence_confidence_level,
         )
+    else:
+        raise ValueError("Unsupported Embedding: ", EMBEDDING)
+
+    return bootstraps
+
+
+def run_pandora(
+    dataset: NumpyDataset,
+    threads: int,
+    bootstrap_convergence_check: bool,
+    bootstrap_convergence_confidence_level: float,
+    key_suffix: str,
+    outdir: pathlib.Path
+) -> (Dict[str, Any], pd.Series):
+    data = dict()
+
+    bootstrap_pickle = outdir / f"bootstrap_{key_suffix}.pickle"
+    support_values_csv = outdir / f"support_values_{key_suffix}.csv"
+    runtime_log = outdir / f"runtime_{key_suffix}.txt"
+
+    do_bootstrap = REDO or not bootstrap_pickle.exists() or not runtime_log.exists() or not support_values_csv.exists()
+    bs_start = time.perf_counter()
+
+    if do_bootstrap:
+        bootstraps = _get_bootstraps(dataset, threads, bootstrap_convergence_check, bootstrap_convergence_confidence_level)
+    else:
+        bootstraps = pickle.load(bootstrap_pickle.open("rb"))
+
+    if EMBEDDING == EmbeddingAlgorithm.PCA:
+        comparison = BatchEmbeddingComparison([b.pca for b in bootstraps])
+    elif EMBEDDING == EmbeddingAlgorithm.MDS:
         comparison = BatchEmbeddingComparison([b.mds for b in bootstraps])
     else:
         raise ValueError("Unsupported Embedding: ", EMBEDDING)
@@ -146,20 +170,30 @@ def run_pandora(
     support_values = comparison.get_sample_support_values(threads=threads)
     bs_end = time.perf_counter()
 
+    if do_bootstrap:
+        # only use the measured runtime if we actually had to compute the bootstraps
+        bs_runtime = bs_end - bs_start
+        runtime_log.write_text(str(bs_runtime))
+    else:
+        # otherwise load it from data
+        bs_runtime = float(runtime_log.open().read().strip())
+
     data[f"stability_{key_suffix}"] = stability
     data[f"cluster_stability_{key_suffix}"] = cluster_stability
     data[f"n_bootstraps_{key_suffix}"] = len(bootstraps)
     data[f"threads_{key_suffix}"] = threads
     data[f"level_{key_suffix}"] = bootstrap_convergence_confidence_level
-    data[f"runtime_{key_suffix}"] = bs_end - bs_start
+    data[f"runtime_{key_suffix}"] = bs_runtime
 
+    # store the support values, as we will need them for subsequent analyses
+    support_values.to_csv(support_values_csv)
     return data, support_values
 
 
 def run_dataset(
     dataset_r_path: pathlib.Path,
     load_function: Callable[[pathlib.Path], NumpyDataset],
-    outfile: pathlib.Path,
+    outdir: pathlib.Path,
     redo: bool = False
 ) -> None:
     """
@@ -169,6 +203,8 @@ def run_dataset(
     3. Convergence check with high confidence limit (0.01) and N_THREADS
     4. Convergence check with low confidence limit (0.05) and N_THREADS // 2
     """
+    outfile = outdir / "results.parquet"
+
     if outfile.exists() and not redo:
         return
 
@@ -187,6 +223,7 @@ def run_dataset(
         bootstrap_convergence_check=False,
         bootstrap_convergence_confidence_level=0.05,
         key_suffix="no_conv",
+        outdir=outdir
     )
     results.update(results_no_convergence)
 
@@ -197,6 +234,7 @@ def run_dataset(
         bootstrap_convergence_check=True,
         bootstrap_convergence_confidence_level=0.05,
         key_suffix="conv_low",
+        outdir=outdir
     )
     results.update(results_with_convergence_low)
     results["speedup_conv_low"] = (
@@ -218,6 +256,7 @@ def run_dataset(
         bootstrap_convergence_check=True,
         bootstrap_convergence_confidence_level=0.01,
         key_suffix="conv_high",
+        outdir=outdir
     )
     results.update(results_with_convergence_high)
     results["speedup_conv_high"] = (
@@ -241,6 +280,7 @@ def run_dataset(
         bootstrap_convergence_check=True,
         bootstrap_convergence_confidence_level=0.05,
         key_suffix="conv_low_fewer_cores",
+        outdir=outdir
     )
     results.update(results_with_convergence_low_fewer_cores)
     results["ps_deviation_low_fewer_cores"] = (
@@ -262,8 +302,9 @@ if __name__ == "__main__":
             if exclusion_criterion(pth):
                 continue
             print("RUNNING: ", pth.stem)
-            outfile = OUTDIR / pth.stem
+            outdir = OUTDIR / pth.stem
+            outdir.mkdir(exist_ok=True, parents=True)
             try:
-                run_dataset(pth, load_method, outfile, REDO)
+                run_dataset(pth, load_method, outdir, REDO)
             except Exception as e:
                 print("error running ", pth.stem, e)
