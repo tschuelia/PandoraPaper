@@ -195,7 +195,7 @@ def run_dataset(
     load_function: Callable[[pathlib.Path], NumpyDataset],
     outdir: pathlib.Path,
     redo: bool = False
-) -> None:
+) -> pd.DataFrame:
     """
     Perform and benchmark the following runs:
     1. No convergence check, compute all N_REPLICATES bootstraps
@@ -291,9 +291,11 @@ def run_dataset(
     # write data as dataframe parquet
     results = pd.DataFrame(data=results, index=[0])
     results.to_parquet(outfile)
+    return results
 
 
 if __name__ == "__main__":
+    dfs = []
     for directory, load_method, exclusion_criterion in [
         (SIMULATED_DATA, load_simulated_data, lambda pth: "replicate" in pth.name),
         (SIMULATED_MISSING_DATA, load_missing_data, lambda pth: "rand" not in pth.name)
@@ -305,6 +307,10 @@ if __name__ == "__main__":
             outdir = OUTDIR / pth.stem
             outdir.mkdir(exist_ok=True, parents=True)
             try:
-                run_dataset(pth, load_method, outdir, REDO)
+                results = run_dataset(pth, load_method, outdir, REDO)
+                dfs.append(results)
             except Exception as e:
                 print("error running ", pth.stem, e)
+
+    df = pd.concat(dfs)
+    df.to_parquet(OUTDIR / f"results_{IDENTIFIER}.parquet")
