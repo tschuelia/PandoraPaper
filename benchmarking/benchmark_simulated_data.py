@@ -206,7 +206,7 @@ def run_dataset(
     outfile = outdir / "results.parquet"
 
     if outfile.exists() and not redo:
-        return
+        return pd.read_parquet(outfile)
 
     dataset = load_function(dataset_r_path)
     results = {
