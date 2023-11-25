@@ -115,8 +115,12 @@ def _compare_support_values(psv_no_convergence, psv_with_convergence):
     return pearsonr(psv_no_convergence.values, psv_with_convergence.values)
 
 
-def _get_bootstraps(dataset: NumpyDataset, threads: int, bootstrap_convergence_check: bool,
-    bootstrap_convergence_confidence_level: float):
+def _get_bootstraps(
+    dataset: NumpyDataset,
+    threads: int,
+    bootstrap_convergence_check: bool,
+    bootstrap_convergence_confidence_level: float,
+):
     if EMBEDDING == EmbeddingAlgorithm.PCA:
         bootstraps = _get_bootstraps_pca(
             dataset,
@@ -143,7 +147,7 @@ def run_pandora(
     bootstrap_convergence_check: bool,
     bootstrap_convergence_confidence_level: float,
     key_suffix: str,
-    outdir: pathlib.Path
+    outdir: pathlib.Path,
 ) -> (Dict[str, Any], pd.Series):
     data = dict()
 
@@ -151,11 +155,22 @@ def run_pandora(
     support_values_csv = outdir / f"support_values_{key_suffix}.csv"
     runtime_log = outdir / f"runtime_{key_suffix}.txt"
 
-    do_bootstrap = REDO or not bootstrap_pickle.exists() or not runtime_log.exists() or not support_values_csv.exists()
+    do_bootstrap = (
+        REDO
+        or not bootstrap_pickle.exists()
+        or not runtime_log.exists()
+        or not support_values_csv.exists()
+    )
     bs_start = time.perf_counter()
 
     if do_bootstrap:
-        bootstraps = _get_bootstraps(dataset, threads, bootstrap_convergence_check, bootstrap_convergence_confidence_level)
+        bootstraps = _get_bootstraps(
+            dataset,
+            threads,
+            bootstrap_convergence_check,
+            bootstrap_convergence_confidence_level,
+        )
+        pickle.dump(bootstraps, bootstrap_pickle.open("wb"))
     else:
         bootstraps = pickle.load(bootstrap_pickle.open("rb"))
 
@@ -186,6 +201,11 @@ def run_pandora(
     data[f"level_{key_suffix}"] = bootstrap_convergence_confidence_level
     data[f"runtime_{key_suffix}"] = bs_runtime
 
+    data[f"avg_support_{key_suffix}"] = support_values.mean()
+    data[f"std_support_{key_suffix}"] = support_values.std()
+    data[f"min_support_{key_suffix}"] = support_values.min()
+    data[f"max_support_{key_suffix}"] = support_values.max()
+
     # store the support values, as we will need them for subsequent analyses
     support_values.to_csv(support_values_csv)
     return data, support_values
@@ -195,7 +215,7 @@ def run_dataset(
     dataset_r_path: pathlib.Path,
     load_function: Callable[[pathlib.Path], NumpyDataset],
     outdir: pathlib.Path,
-    redo: bool = False
+    redo: bool = False,
 ) -> pd.DataFrame:
     """
     Perform and benchmark the following runs:
@@ -224,7 +244,7 @@ def run_dataset(
         bootstrap_convergence_check=False,
         bootstrap_convergence_confidence_level=0.05,
         key_suffix="no_conv",
-        outdir=outdir
+        outdir=outdir,
     )
     results.update(results_no_convergence)
 
@@ -235,7 +255,7 @@ def run_dataset(
         bootstrap_convergence_check=True,
         bootstrap_convergence_confidence_level=0.05,
         key_suffix="conv_low",
-        outdir=outdir
+        outdir=outdir,
     )
     results.update(results_with_convergence_low)
     results["speedup_conv_low"] = (
@@ -257,7 +277,7 @@ def run_dataset(
         bootstrap_convergence_check=True,
         bootstrap_convergence_confidence_level=0.01,
         key_suffix="conv_high",
-        outdir=outdir
+        outdir=outdir,
     )
     results.update(results_with_convergence_high)
     results["speedup_conv_high"] = (
@@ -281,7 +301,7 @@ def run_dataset(
         bootstrap_convergence_check=True,
         bootstrap_convergence_confidence_level=0.05,
         key_suffix="conv_low_fewer_cores",
-        outdir=outdir
+        outdir=outdir,
     )
     results.update(results_with_convergence_low_fewer_cores)
     results["ps_deviation_low_fewer_cores"] = (
@@ -299,7 +319,7 @@ if __name__ == "__main__":
     dfs = []
     for directory, load_method, exclusion_criterion in [
         (SIMULATED_DATA, load_simulated_data, lambda pth: "replicate" in pth.name),
-        (SIMULATED_MISSING_DATA, load_missing_data, lambda pth: "rand" not in pth.name)
+        (SIMULATED_MISSING_DATA, load_missing_data, lambda pth: "rand" not in pth.name),
     ]:
         for pth in directory.iterdir():
             if exclusion_criterion(pth):
