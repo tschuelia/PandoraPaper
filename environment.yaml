@@ -1,0 +1,15 @@
+name: pandora-paper
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - notebook
+  - pandas
+  - numpy
+  - scipy
+  - pyreadr
+  - fastparquet
+  - snakemake
+    #  - eigensoft
+  - pandora-geno
