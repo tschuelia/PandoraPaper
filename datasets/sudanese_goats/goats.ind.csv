@@ -1,0 +1,96 @@
+﻿Sample Name;Breed;Location;Age (Years);locationShort
+NM 5 out;Nu;Gezire_Alatra_Madani Research Center;2;Gezire
+Ko 6;Ni;Kosti_South railway;3;Kosti
+Ko 22;Ni;Kosti_South railway;3;Kosti
+Ko 32;Ni;Kosti_North railway;6;Kosti
+Ko 39;Ni;Kosti_North railway;2;Kosti
+TM 701;Tagg;Nuba Mountain_Madani Research Center;2;Nuba Mountain
+TM 38;Tagg;Nuba Mountain_Madani Research Center;?;Nuba Mountain
+TM 526;Tagg;Nuba Mountain_Madani Research Center;?;Nuba Mountain
+TM 520;Tagg;Nuba Mountain_Madani Research Center;?;Nuba Mountain
+TD 15 (n);Tagg;Dalang_Kurmul;4;Dalang
+TD 19 (n);Tagg;Dalang_Hbela;6;Dalang
+TD 6;Tagg;Dalang_Kurmul;3;Dalang
+TD 14;Tagg;Dalang_Kurmul;5;Dalang
+TD 11(n);Tagg;Dalang_Kurmul;2;Dalang
+TD 35;Tagg;Dalang_Altakma;1;Dalang
+TD 3;Tagg;Dalang_city;4;Dalang
+TD1;Tagg;Dalang_city;5;Dalang
+TD 2;Tagg;Dalang_city;4;Dalang
+TD 22 (n);Tagg;Dalang_Hbela;4;Dalang
+TD 29 (n);Tagg;Dalang_Hbela;2;Dalang
+TD 38;Tagg;Dalang_Altakma;5;Dalang
+TD 33;Tagg;Dalang_Altakma;2;Dalang
+TD 43;Tagg;Dalang_Aldeen;4;Dalang
+TD 42;Tagg;Dalang_Aldeen;1;Dalang
+TM 650;Tagg;Nuba Mountain_Madani Research Center;1,4;Nuba Mountain
+TD 49;Tagg;Dalang_Aldeen;3;Dalang
+DB 89;Dese;Abu Zabad_Bahri University Farm;3;Abu Zabad
+TD 39;Tagg;Dalang_Altakma;4;Dalang
+TD 48;Tagg;Dalang_Aldeen;4;Dalang
+DB 70;Dese;Abu Zabad_Bahri University Farm;3;Abu Zabad
+TD 26 (n);Tagg;Dalang_Hbela;1,5;Dalang
+Ko 46;Ni;Kosti_North railway;5;Kosti
+K37b;Ni;Kosti_Alalob;4;Kosti
+K 40;Ni;Kosti_Alalob;4;Kosti
+Nu 4;Nu;East Nile_Droshab;5;East Nile
+DBBA 19;Dese;Bara_Mdemen;5;Bara
+NM 2 out;Nu;Gezire_Alkumur;3;Gezire
+DN 1;Nu;Dungla_Dabtod;5;Dungla
+DBBA 12;Dese;Bara_Umdemen;5;Bara
+K 20;Ni;Kosti_Dar Alahmda;5;Kosti
+Ks 8;Ni;Kosti_Squar 42;5;Kosti
+K 10;Ni;Kosti_Alhsanea;5;Kosti
+K 27;Ni;Kosti_Dar Alahmda;4;Kosti
+DB 41;Dese;Abu Zabad_Bahri University Farm;2,5;Abu Zabad
+Ko 10;Ni;Kosti_South railway;4;Kosti
+Ko 19;Ni;Kosti_South railway;3;Kosti
+DB 30;Dese;Abu Zabad_Bahri University Farm;2,5;Abu Zabad
+Ks 14;Ni;Rabak_Square1;2;Rabak
+Ko 49;Ni;Kosti_North railway;3;Kosti
+K 7;Ni;Kosti_Alhsanea;2;Kosti
+K 17;Ni;Kosti_Alhsanea;6;Kosti
+DBB18;Dese;Bara_Mdemen;4;Bara
+K33;Ni;Kosti_Alalob;3;Kosti
+NE 2;Nu;East Nile_Umdom;4;East Nile
+NE 4;Nu;East Nile_Algreef;4;East Nile
+DBBA 7;Dese;Bara_Umseala;7;Bara
+DBBA 2;Dese;Bara_Alhgena Almnsora;5;Bara
+DBBA 6;Dese;Bara_Alhgena Almahla;6;Bara
+Sh 3;Nu;Shendi_Alwateb;6;Shendi
+DBB 30;Dese;Bara_Um sodon;2,5;Bara
+DBB 41;Dese;Bara_Alwehda;3,5;Bara
+Ks 1;Ni;Kosti_Arkwet;5;Kosti
+Ks 21;Ni;Rabak_Square1;4;Rabak
+KS 5;Ni;Kosti_Squar 42;8;Kosti
+Ks 2;Ni;Kosti_Arkwet;2;Kosti
+Nuk 38;Nu;Abuhamad_Kuku research station;2;Abuhamad
+Nuk 300;Nu;Abuhamad_Kuku research station;3;Abuhamad
+Nuk 32;Nu;Abuhamad_Kuku research station;2;Abuhamad
+Dn 3;Nu;Dungla_Shabtod;4;Dungla
+DN 29;Nu;Dungla_Dungla research center;2;Dungla
+DBBA 4;Dese;Bara_Alhgena Almahla;4;Bara
+Sh 6;Nu;Shendi_Altaragma;3;Shendi
+NM 1 out;Nu;Gezire_Alshanabla;5;Gezire
+NM 4 out;Nu;Gezire_Ganab Hag Ali;2;Gezire
+DBBA 11;Dese;Bara_Umdemen;7;Bara
+DBBA 14;Dese;Bara_Falstin;6;Bara
+DBB 46;Dese;Bara_Falstin;2;Bara
+DBBA 1;Dese;Bara_Alhgena Almnsora;3;Bara
+Sh 1;Nu;Shendi_Altendeb;5;Shendi
+Sh 11;Nu;Shendi_Ber Tefor;7;Shendi
+Nuk 12;Nu;Abuhamad_Kuku research station;3,5;Abuhamad
+NE1;Nu;East Nile_Umdom;5;East Nile
+SN 4;Nu;Aldamer_Sudan University;2;Aldamer
+SN2;Nu;Aldamer_Sudan University;3;Aldamer
+SN 5;Nu;Aldamer_Sudan University;4;Aldamer
+DBB 36;Dese;Bara_Um sodon;2,5;Bara
+DBB 23;Dese;Bara_Mdemen;3,5;Bara
+DBB 31;Dese;Bara_Um sodon;3,5;Bara
+DBB 34;Dese;Bara_Um sodon;3;Bara
+SN 6;Nu;Aldamer_Sudan University;3;Aldamer
+DBB 6;Dese;Bara_Umseala;1,5;Bara
+DBB 13;Dese;Bara_Umseala;3;Bara
+DBB 16;Dese;Bara_Umseala;5;Bara
+K 23;Ni;Kosti_Dar Alahmda;4;Kosti
+KS 16;Ni;Rabak_Square1;6;Rabak
