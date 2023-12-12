@@ -11,5 +11,4 @@ dependencies:
   - pyreadr
   - fastparquet
   - snakemake
-    #  - eigensoft
   - pandora-geno
