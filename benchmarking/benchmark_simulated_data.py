@@ -1,16 +1,3 @@
-"""
-# Simulated Data Benchmark
-
-Data obtained from:
-Yi, X., & Latch, E. K. (2022). Nonrandom missing data can bias Principal Component Analysis inference of population genetic structure.
-Molecular Ecology Resources, 22, 602– 611. https://doi.org/10.1111/1755-0998.13498.
-
-To download the required data, run the following set of commands in your terminal:
-
-cd ../datasets && mkdir simulated_data  && cd simulated_data
-wget https://github.com/xuelingyi/missing_data_PCA/raw/main/simulation.zip && unzip simulation.zip && rm simulation.zip
-wget https://github.com/xuelingyi/missing_data_PCA/raw/main/MISSdata.zip && unzip MISSdata.zip && rm MISSdata.zip
-"""
 import pathlib
 import pickle
 import time
