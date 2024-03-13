@@ -50,6 +50,65 @@ df = pd.read_parquet("results.parquet")
 ```
 
 
-## Results and Pandora Reference
+## Download the results
+Instead of rerunning the analyses yourself, you can also download all (log)files from our experiments via [our lab server](https://cme.h-its.org/exelixis/material/Pandora_supplementary_data.tar.gz).
+The directory follows this structure:
+```text
+├── empirical_datasets [1]
+│   ├── pca  # PCA results
+│   │   ├── {dataset}  # one such directory for each empirical dataset 
+│   │   │   ├── no_convergence  # Logs and (intermediate) results with convergence check disabled
+│   │   │   ├── convergence_5p  # Logs and (intermediate) results with 5% convergence tolerance
+│   │   │   ├── convergence_1p  # Logs and (intermediate) results with 1% convergence tolerance
+│   │   │   ├── convergence_5p_10threads  # Logs and (intermediate) results with 5% convergence tolerance and only 10 threads
+│   ├── mds  # MDS results
+│   │   ├── {dataset}  # one such directory for each empirical dataset 
+│   │   │   ├── no_convergence  # Logs and (intermediate) results with convergence check disabled
+│   │   │   ├── convergence_5p  # Logs and (intermediate) results with 5% convergence tolerance
+│   │   │   ├── convergence_1p  # Logs and (intermediate) results with 1% convergence tolerance
+├── simulated_datasets [2]
+│   ├── pca  # PCA results
+│   │   ├── {dataset}  # one such directory for each simulated dataset 
+│   ├── mds  # MDS results (FST population distance)
+│   │   ├── {dataset}  # one such directory for each simulated dataset 
+│   ├── mds_sample_dist  # MDS (missing corrected Hamming distance)
+│   │   ├── {dataset}  # one such directory for each simulated dataset 
+├── sliding_window_hgdp  # Sliding-window results
+│   ├── 12_windows
+│   ├── 50_windows
+```
+
+[1] Empirical datasets includes the following:
+- HO-WE (*smartpca* settings: 5 outlier iterations, shrinking disabled)
+- HO-WE-no_outlier (*smartpca* settings: 0 outlier iterations, shrinking disabled)
+- HO-WE-shrink (*smartpca* settings: 5 outlier iterations, shrinking enabled)
+- HO-WE-230
+- HO-WE-Cayonu (*smartpca* settings: 5 outlier iterations, shrinking disabled)
+- HO-WE-Cayonu-shrink (*smartpca* settings: 5 outlier iterations, shrinking enabled)
+- HO-Glob
+- Goats
+- Sheep
+- Panel{i} for i in 1, ..., 13
+
+[2] Simulated datasets includes the following:
+- Cline
+- Cline_1p (1% missing data)
+- Cline_10p (10% missing data)
+- Cline_20p (20% missing data)
+- Island
+- Island_1p (1% missing data)
+- Island_10p (10% missing data)
+- Island_20p (20% missing data)
+- P3
+- P3_1p (1% missing data)
+- P3_10p (10% missing data)
+- P3_20p (20% missing data)
+- P3-mig50
+- P3-mig50_1p (1% missing data)
+- P3-mig50_10p (10% missing data)
+- P3-mig50_20p (20% missing data)
+
+Within the individual Pandora result directories, the directory structure follows the specification as stated in the [Pandora documentation](https://pandorageno.readthedocs.io/en/latest/cli_config.html#output-files).
+
+## Pandora Reference
 TODO: add link to preprint once available
-TODO: add link to results of the benchmark runs once available
