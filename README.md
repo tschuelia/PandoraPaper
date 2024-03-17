@@ -110,5 +110,8 @@ The directory follows this structure:
 
 Within the individual Pandora result directories, the directory structure follows the specification as stated in the [Pandora documentation](https://pandorageno.readthedocs.io/en/latest/cli_config.html#output-files).
 
-## Pandora Reference
-TODO: add link to preprint once available
+
+## Publication
+The paper explaining the details of Pandora is available as preprint on bioRxiv:
+
+Haag, J., Jordan A. I. & Stamatakis, A. (2024). **Pandora: A Tool to Estimate Dimensionality Reduction Stability of Genotype Data.** *bioRxiv*. [https://doi.org/10.1101/2024.03.14.584962](https://doi.org/10.1101/2024.03.14.584962)
