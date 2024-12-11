@@ -1,10 +1,7 @@
-datasets/*
-!datasets/popsim_simulations
-!*.ipynb
-!*.py
-
-
-**/results_benchmark/
+empirical
+popgen_simulations
+!**.ipynb
+!**.py
 
 **/.snakemake
 
