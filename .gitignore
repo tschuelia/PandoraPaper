@@ -1,7 +1,7 @@
 empirical
 popgen_simulations
-!**.ipynb
-!**.py
+!**/*.ipynb
+!**/*.py
 
 **/.snakemake
 
