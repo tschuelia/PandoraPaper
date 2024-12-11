@@ -1,0 +1,104 @@
+# Snakefile to benchmark a Pandora run on an empirical dataset
+
+"""
+This Snakefile is used to benchmark a Pandora run on an empirical dataset. For benchmarking on our institutional
+servers, we need to read and generate all files locally otherwise the benchmark is corrupted by the overhead of
+the external file system. This is why we copy the files to a local directory before running the benchmark, and copy
+the results back to the external file system afterward.
+"""
+import pathlib
+import pandas as pd
+import yaml
+
+
+# CONFIG
+# ---------------
+dataset_identifier = "HO-WestEurasia"
+eigen_prefix = "NearEastPublic/westEurasia/HumanOriginsPublic2068.westEurasian"
+n_components = 10
+algo = "PCA"
+n_bootstraps = 100
+n_threads = 20
+seed = 42
+# ---------------
+
+external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
+dataset_prefix = external / "datasets" / eigen_prefix
+
+geno_file_external = pathlib.Path(f"{dataset_prefix}.geno")
+ind_file_external = pathlib.Path(f"{dataset_prefix}.ind")
+snp_file_external = pathlib.Path(f"{dataset_prefix}.snp")
+
+result_prefix_external = external / "results"
+
+local = pathlib.Path()
+local_results = local / "results"
+
+
+
+
+rule all:
+    input:
+        result_prefix_external / f"{dataset_identifier}.pandora.parquet"
+
+
+rule copy_dataset_to_local:
+    input:
+        geno_file = geno_file_external,
+        ind_file = ind_file_external,
+        snp_file = snp_file_external
+    output:
+        geno_file = local / f"{dataset_identifier}.geno",
+        ind_file = local / f"{dataset_identifier}.ind",
+        snp_file = local / f"{dataset_identifier}.snp"
+    shell:
+        "cp {input.geno_file} {output.geno_file} && "
+        "cp {input.ind_file} {output.ind_file} && "
+        "cp {input.snp_file} {output.snp_file}"
+
+
+rule run_pandora:
+    input:
+        geno_file = rules.copy_dataset_to_local.output.geno_file
+    output:
+        pandora_results = local_results / "pandora.txt",
+        log = local / "pandora.log"
+    log:
+        out = local / "pandora.out",
+        err = local / "pandora.err"
+    run:
+        # Create Pandora config file
+        config_file = local / f"{dataset_identifier}_config.yaml"
+
+        config = {
+            'dataset_prefix': str(pathlib.Path(input.geno_file).parent),
+            'result_dir': str(local_results),
+            'n_replicates': n_bootstraps,
+            'threads': n_threads,
+            'seed': seed,
+            'redo': True,
+            'embedding_algorithm': algo,
+        }
+
+        yaml.dump(config, config_file.open("w"))
+
+        shell("pandora -c {config_file} > {log.out} 2> {log.err}")
+
+
+rule collect_results:
+    input:
+        pandora_results = rules.run_pandora.output.pandora_results,
+        pandora_log = rules.run_pandora.output.log
+    output:
+        summary = local_results / f"{dataset_identifier}.pandora.parquet"
+    run:
+        pass
+
+
+rule copy_results_to_external:
+    input:
+        summary = rules.collect_results.output.summary
+    output:
+        summary = result_prefix_external / f"{dataset_identifier}.pandora.parquet"
+    shell:
+        "cp {local_results} {result_prefix_external}"
