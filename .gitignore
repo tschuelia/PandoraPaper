@@ -1,7 +1,6 @@
-empirical
-popgen_simulations
-!**/*.ipynb
-!**/*.py
+empirical/**
+!empirical/dataset_preparation/Cayonu.ipynb
+#!empirical/**/*.py
 
 **/.snakemake
 
