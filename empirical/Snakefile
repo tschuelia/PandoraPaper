@@ -94,8 +94,9 @@ rule move_results_to_external:
         pandora_results_ext = result_prefix_external / dataset_identifier / "pandora.txt",
         pandora_log_ext = result_prefix_external / dataset_identifier / "pandora.log"
     run:
-        result_prefix_external.mkdir(exist_ok=True, parents=True)
-        shell(f"mv {local_results} {result_prefix_external}/{dataset_identifier}")
+        outdir = result_prefix_external / dataset_identifier
+        outdir.mkdir(exist_ok=True, parents=True)
+        shell(f"mv {local_results}/* {outdir}/")
 
 
 rule collect_results:
