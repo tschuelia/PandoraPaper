@@ -1,0 +1,463 @@
+import pathlib
+import shutil
+
+import numpy as np
+import pandas as pd
+import stdpopsim
+from snakemake.executors import change_working_directory
+
+from pandora.converter import run_convertf
+from pandora.custom_types import FileFormat
+from scripts.utils import collect_data_for_experiment, execute_pandora_config, write_geno_file, write_ind_file, \
+    write_pandora_config, write_snp_file
+
+
+PLINK = pathlib.Path("plink")
+
+if "/Users/julia" in os.getcwd():
+    PLINK2 = pathlib.Path("/Users/julia/Software/plink2")
+    CONVERTF = pathlib.Path("/Users/julia/micromamba/envs/trash/bin/convertf")
+    SMARTPCA = pathlib.Path("/Users/julia/micromamba/envs/trash/bin/smartpca")
+
+    N_BOOTSTRAPS = 10
+    N_THREADS = 2
+    OUTDIR_PREFIX = pathlib.Path("/tmp/")
+else:
+    PLINK2 = pathlib.Path("plink2")
+    CONVERTF = pathlib.Path("convertf")
+    SMARTPCA = pathlib.Path("smartpca")
+
+    N_BOOTSTRAPS = 100
+    N_THREADS = 20
+    OUTDIR_PREFIX = pathlib.Path()
+
+
+ALL_POPULATIONS = True
+POPULATION_INDEX = 0
+
+
+SEED = 42
+
+SPECIES = "HomSap"
+
+MODELS = {
+    # model: populations that can't be simulated
+    "AshkSub_7G19": [],
+    # "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
+    # "OutOfAfrica_3G09": [],
+    # "OutOfAfrica_2T12": [],
+    # "Africa_1T12": [],
+    # "AmericanAdmixture_4B11": [],
+    # "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
+    # "Zigzag_1S14": [],
+    # "AncientEurasia_9K19": ["BasalEurasian"],
+    # "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
+    # "OutOfAfrica_4J17": [],
+    # "Africa_1B08": [],
+    # "AncientEurope_4A21": [],
+}
+
+
+SEQ_LENGTHS = ["1e5"] #, "1e6"] #, "1e7", "1e8", "1e9"]
+MISSING = [0.01] #], 0.05] #, 0.1, 0.2, 0.5]
+
+OUTDIR_PREFIX = OUTDIR_PREFIX / SPECIES
+
+N_SAMPLES_TOTAL = 500
+
+if ALL_POPULATIONS:
+    OUTDIR = OUTDIR_PREFIX / ("{model}_{seq_len}_" + str(N_SAMPLES_TOTAL))
+    OUTFILE = OUTDIR_PREFIX / f"all_results.parquet"
+else:
+    OUTDIR = OUTDIR_PREFIX / ("{model}_{seq_len}_single_population_" + str(POPULATION_INDEX) + "_" + str(N_SAMPLES_TOTAL))
+    OUTFILE = OUTDIR_PREFIX / f"all_results_population_{POPULATION_INDEX}.parquet"
+
+
+def get_populations_for_model(model):
+    if ALL_POPULATIONS:
+        species = stdpopsim.get_species(SPECIES)
+        dem_model = species.get_demographic_model(model)
+        return [p for p in dem_model.populations if p.name not in MODELS[model]]
+    else:
+        return [stdpopsim.get_species(SPECIES).get_demographic_model(model).populations[POPULATION_INDEX]]
+
+
+rule all:
+    input:
+        OUTFILE
+
+
+rule simulate_no_missing:
+    output:
+        geno_file = OUTDIR / f"no_missing.geno",
+        snp_file = OUTDIR / f"no_missing.snp",
+        ind_file = OUTDIR / f"no_missing.ind",
+    params:
+        model = lambda wildcards: wildcards.model,
+        seq_len = lambda wildcards: wildcards.seq_len,
+    run:
+        species = stdpopsim.get_species(SPECIES)
+        model = species.get_demographic_model(params.model)
+        contig = species.get_contig(mutation_rate=model.mutation_rate,length=eval(params.seq_len))
+
+        populations = get_populations_for_model(params.model)
+        samples_per_population = int(N_SAMPLES_TOTAL / len(populations))
+        samples = dict((p.name, samples_per_population) for p in populations)
+
+        engine = stdpopsim.get_engine("msprime")
+        ts = engine.simulate(model,contig,samples,seed=SEED)
+
+        write_ind_file(ts, pathlib.Path(output.ind_file))
+        write_snp_file(ts, pathlib.Path(output.snp_file))
+        write_geno_file(ts, pathlib.Path(output.geno_file))
+
+
+rule pandora_config:
+    input:
+        geno_file = rules.simulate_no_missing.output.geno_file,
+        snp_file = rules.simulate_no_missing.output.snp_file,
+        ind_file = rules.simulate_no_missing.output.ind_file,
+    output:
+        config_file = OUTDIR / "pandora_config.yaml",
+    params:
+        model = lambda wildcards: wildcards.model
+    run:
+        config_file = pathlib.Path(output.config_file)
+        eigen_prefix = pathlib.Path(input.geno_file).with_suffix("")
+        result_dir = eigen_prefix.parent / "results"
+
+        write_pandora_config(
+            eigen_prefix=eigen_prefix,
+            result_dir=result_dir,
+            config_file=config_file,
+            n_bootstraps=N_BOOTSTRAPS,
+            n_threads=N_THREADS,
+            seed=SEED,
+            smartpca=SMARTPCA,
+            n_populations=len(get_populations_for_model(params.model))
+        )
+
+
+rule run_pandora:
+    input:
+        config_file = rules.pandora_config.output.config_file,
+    output:
+        pandora_result = OUTDIR / "results" / "pandora.txt",
+        support_values = OUTDIR / "results" / "pandora.supportValues.csv",
+    run:
+        execute_pandora_config(
+            config_file=pathlib.Path(input.config_file),
+        )
+
+
+rule eigen_to_plink:
+    input:
+        geno_file = rules.simulate_no_missing.output.geno_file,
+        snp_file = rules.simulate_no_missing.output.snp_file,
+        ind_file = rules.simulate_no_missing.output.ind_file,
+    output:
+        geno_file = OUTDIR / "no_missing_plink.bed",
+        snp_file = OUTDIR / "no_missing_plink.bim",
+        ind_file = OUTDIR / "no_missing_plink.fam",
+    run:
+        change_working_directory(OUTDIR)
+        run_convertf(
+            convertf=str(CONVERTF),
+            in_prefix=pathlib.Path(input.geno_file).with_suffix(""),
+            out_prefix=pathlib.Path(output.geno_file).with_suffix(""),
+            in_format=FileFormat.EIGENSTRAT,
+            out_format=FileFormat.PACKEDPED,
+        )
+
+
+rule maf_filtering:
+    input:
+        geno_file = rules.eigen_to_plink.output.geno_file,
+        snp_file = rules.eigen_to_plink.output.snp_file,
+        ind_file = rules.eigen_to_plink.output.ind_file,
+    output:
+        geno_file = OUTDIR / "maf_filtered.bed",
+        snp_file = OUTDIR / "maf_filtered.bim",
+        ind_file = OUTDIR / "maf_filtered.fam",
+    log:
+        out = OUTDIR / "maf_filtering.out",
+        err = OUTDIR / "maf_filtering.err",
+    run:
+        change_working_directory(OUTDIR)
+        plink_cmd = [
+            str(PLINK2),
+            "--bfile",
+            f"{pathlib.Path(input.geno_file).with_suffix('')}",
+            "--maf",
+            "0.01",
+            "--make-bed",
+            "--out",
+            f"{pathlib.Path(output.geno_file).with_suffix('')}",
+
+        ]
+        cmd = " ".join(plink_cmd) + " > {log.out} 2> {log.err}"
+        shell(cmd)
+
+
+rule ld_pruning:
+    input:
+        geno_file = rules.maf_filtering.output.geno_file,
+        snp_file = rules.maf_filtering.output.snp_file,
+        ind_file = rules.maf_filtering.output.ind_file,
+    output:
+        geno_file = OUTDIR / "ld_pruned.bed",
+        snp_file = OUTDIR / "ld_pruned.bim",
+        ind_file = OUTDIR / "ld_pruned.fam",
+    log:
+        out = OUTDIR / "ld_pruning.out",
+        err = OUTDIR / "ld_pruning.err",
+    run:
+        change_working_directory(OUTDIR)
+        # Step 1: find SNPs to filter out
+        plink_cmd = [
+            str(PLINK2),
+            "--bfile",
+            f"{pathlib.Path(input.geno_file).with_suffix('')}",
+            "--indep-pairwise",
+            "50",
+            "5",
+            "0.5",
+            "--out",
+            f"{pathlib.Path(output.geno_file).with_suffix('')}",
+        ]
+        cmd = " ".join(plink_cmd) + " > {log.out} 2> {log.err}"
+
+        shell(cmd)
+
+        # Step 2: filter out SNPs
+        plink_cmd = [
+            str(PLINK2),
+            "--bfile",
+            f"{pathlib.Path(input.geno_file).with_suffix('')}",
+            "--extract",
+            f"{pathlib.Path(output.geno_file).with_suffix('.prune.in')}",
+            "--make-bed",
+            "--out",
+            f"{pathlib.Path(output.geno_file).with_suffix('')}",
+        ]
+        cmd = " ".join(plink_cmd) + " >> {log.out} 2>> {log.err}"
+
+        shell(cmd)
+
+
+rule plink_to_eigen:
+    input:
+        geno_file = rules.ld_pruning.output.geno_file,
+        snp_file = rules.ld_pruning.output.snp_file,
+        ind_file = rules.ld_pruning.output.ind_file,
+        orig_ind_file = rules.simulate_no_missing.output.ind_file,
+    output:
+        geno_file = OUTDIR / "ld_pruned.geno",
+        snp_file = OUTDIR / "ld_pruned.snp",
+        ind_file = OUTDIR / "ld_pruned.ind",
+    run:
+        change_working_directory(OUTDIR)
+        run_convertf(
+            convertf=str(CONVERTF),
+            in_prefix=pathlib.Path(input.geno_file).with_suffix(""),
+            out_prefix=pathlib.Path(output.geno_file).with_suffix(""),
+            in_format=FileFormat.PACKEDPED,
+            out_format=FileFormat.EIGENSTRAT,
+        )
+
+        # Copy the original ind file since all the convertf + PLINK operations lost the population information
+        # but first, make sure the individual IDs are the same
+        orig_inds = pd.read_table(input.orig_ind_file, header=None, sep=" ")
+        new_inds = pd.read_table(output.ind_file, header=None, sep=" ")
+        if (orig_inds[0] == new_inds[0]).all():
+            shutil.copy(input.orig_ind_file, output.ind_file)
+        else:
+            raise ValueError("Individual IDs do not match between the original and the new ind files")
+
+
+rule pandora_config_ld_pruned:
+    input:
+        geno_file = rules.plink_to_eigen.output.geno_file,
+        snp_file = rules.plink_to_eigen.output.snp_file,
+        ind_file = rules.plink_to_eigen.output.ind_file,
+    output:
+        config_file = OUTDIR / "pandora_config_ld_pruned.yaml",
+    params:
+        model = lambda wildcards: wildcards.model
+    run:
+        config_file = pathlib.Path(output.config_file)
+        eigen_prefix = pathlib.Path(input.geno_file).with_suffix("")
+        result_dir = eigen_prefix.parent / "results_ld_pruned"
+
+        write_pandora_config(
+            eigen_prefix=eigen_prefix,
+            result_dir=result_dir,
+            config_file=config_file,
+            n_bootstraps=N_BOOTSTRAPS,
+            n_threads=N_THREADS,
+            seed=SEED,
+            smartpca=SMARTPCA,
+            n_populations=len(get_populations_for_model(params.model))
+        )
+
+
+rule run_pandora_ld_pruned:
+    input:
+        config_file = rules.pandora_config_ld_pruned.output.config_file,
+    output:
+        pandora_result = OUTDIR / "results_ld_pruned" / "pandora.txt",
+        support_values = OUTDIR / "results_ld_pruned" / "pandora.supportValues.csv",
+    run:
+        execute_pandora_config(
+            config_file=pathlib.Path(input.config_file),
+        )
+
+
+rule add_random_missing_data:
+    input:
+        geno_file = rules.plink_to_eigen.output.geno_file,
+        snp_file = rules.plink_to_eigen.output.snp_file,
+        ind_file = rules.plink_to_eigen.output.ind_file,
+    output:
+        geno_file = OUTDIR / "missing_{missing}" / "missing_{missing}_ld_pruned.geno",
+        snp_file = OUTDIR / "missing_{missing}" / "missing_{missing}_ld_pruned.snp",
+        ind_file = OUTDIR / "missing_{missing}" / "missing_{missing}_ld_pruned.ind",
+    params:
+        missing = lambda wildcards: float(wildcards.missing),
+    run:
+        shutil.copy(input.ind_file, output.ind_file)
+        shutil.copy(input.geno_file, output.geno_file)
+        shutil.copy(input.snp_file, output.snp_file)
+
+        geno = np.array([list(line.strip()) for line in open(output.geno_file).readlines()])
+        geno = geno.astype(np.int8)
+
+        num_missing = int(params.missing * geno.size)
+        missing_indices = np.random.choice(geno.size,num_missing,replace=False)
+
+        geno.ravel()[missing_indices] = 9
+        open(output.geno_file, "w").writelines(["".join(row) + "\n" for row in geno.astype(str)])
+
+
+rule pandora_config_ld_pruned_missing:
+    input:
+        geno_file = rules.add_random_missing_data.output.geno_file,
+        snp_file = rules.add_random_missing_data.output.snp_file,
+        ind_file = rules.add_random_missing_data.output.ind_file,
+    output:
+        config_file = OUTDIR / "missing_{missing}" / "pandora_config_ld_pruned.yaml",
+    params:
+        model = lambda wildcards: wildcards.model
+    run:
+        config_file = pathlib.Path(output.config_file)
+        eigen_prefix = pathlib.Path(input.geno_file).with_suffix("")
+        result_dir = eigen_prefix.parent / "results_ld_pruned"
+
+        write_pandora_config(
+            eigen_prefix=eigen_prefix,
+            result_dir=result_dir,
+            config_file=config_file,
+            n_bootstraps=N_BOOTSTRAPS,
+            n_threads=N_THREADS,
+            seed=SEED,
+            smartpca=SMARTPCA,
+            n_populations=len(get_populations_for_model(params.model))
+        )
+
+
+rule run_pandora_ld_pruned_missing:
+    input:
+        config_file = rules.pandora_config_ld_pruned_missing.output.config_file,
+    output:
+        pandora_result = OUTDIR / "missing_{missing}" / "results_ld_pruned" / "pandora.txt",
+        support_values = OUTDIR / "missing_{missing}" / "results_ld_pruned" / "pandora.supportValues.csv",
+    run:
+        execute_pandora_config(
+            config_file=pathlib.Path(input.config_file),
+        )
+
+
+rule collect_results:
+    input:
+        # no missing, no LD pruning
+        pandora_result = rules.run_pandora.output.pandora_result,
+        support_values = rules.run_pandora.output.support_values,
+        snp_file = rules.simulate_no_missing.output.snp_file,
+        ind_file = rules.simulate_no_missing.output.ind_file,
+        geno_file = rules.simulate_no_missing.output.geno_file,
+        # no missing, LD pruning
+        pandora_result_ld = rules.run_pandora_ld_pruned.output.pandora_result,
+        support_values_ld = rules.run_pandora_ld_pruned.output.support_values,
+        snp_file_ld = rules.plink_to_eigen.output.snp_file,
+        ind_file_ld = rules.plink_to_eigen.output.ind_file,
+        geno_file_ld = rules.plink_to_eigen.output.geno_file,
+        # missing, LD pruning
+        pandora_result_missing = expand(rules.run_pandora_ld_pruned_missing.output.pandora_result, missing=MISSING, allow_missing=True),
+        support_values_missing = expand(rules.run_pandora_ld_pruned_missing.output.support_values, missing=MISSING, allow_missing=True),
+        snp_file_missing = expand(rules.add_random_missing_data.output.snp_file, missing=MISSING, allow_missing=True),
+        ind_file_missing = expand(rules.add_random_missing_data.output.ind_file, missing=MISSING, allow_missing=True),
+        geno_file_missing = expand(rules.add_random_missing_data.output.geno_file, missing=MISSING, allow_missing=True),
+    output:
+        result_file = OUTDIR / "results.parquet"
+    params:
+        model = lambda wildcards: wildcards.model,
+        seq_len = lambda wildcards: wildcards.seq_len,
+    run:
+        results = collect_data_for_experiment(
+            pathlib.Path(input.pandora_result),
+            pathlib.Path(input.support_values),
+            pathlib.Path(input.ind_file),
+            pathlib.Path(input.snp_file),
+            pathlib.Path(input.geno_file),
+            0.0,
+            False
+        )
+
+        results_ld = collect_data_for_experiment(
+            pathlib.Path(input.pandora_result_ld),
+            pathlib.Path(input.support_values_ld),
+            pathlib.Path(input.ind_file_ld),
+            pathlib.Path(input.snp_file_ld),
+            pathlib.Path(input.geno_file_ld),
+            0.0,
+            True
+        )
+
+        results_missing = [
+            collect_data_for_experiment(
+                pathlib.Path(input.pandora_result_missing[MISSING.index(missing)]),
+                pathlib.Path(input.support_values_missing[MISSING.index(missing)]),
+                pathlib.Path(input.ind_file_missing[MISSING.index(missing)]),
+                pathlib.Path(input.snp_file_missing[MISSING.index(missing)]),
+                pathlib.Path(input.geno_file_missing[MISSING.index(missing)]),
+                missing,
+                True
+            )
+            for missing
+            in MISSING
+        ]
+
+        results = pd.concat([results, results_ld] + results_missing, ignore_index=True)
+        if ALL_POPULATIONS:
+            results["model"] = params.model
+        else:
+            model_population = stdpopsim.get_species(SPECIES).get_demographic_model(params.model).populations[POPULATION_INDEX].name
+            results["model"] = params.model + "_" + model_population
+        results["exclude_pops"] = str(MODELS[params.model])
+        results["seq_len"] = params.seq_len
+
+        results.to_parquet(pathlib.Path(output.result_file))
+
+
+rule collect_all_results:
+    input:
+        expand(
+            rules.collect_results.output.result_file,
+            model=MODELS.keys(),
+            seq_len=SEQ_LENGTHS,
+        ),
+    output:
+        result_file = OUTFILE,
+    run:
+        all_results = pd.concat([pd.read_parquet(f) for f in input])
+        all_results.to_parquet(output.result_file)

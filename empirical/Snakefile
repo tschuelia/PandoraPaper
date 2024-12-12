@@ -15,11 +15,13 @@ import yaml
 # ---------------
 dataset_identifier = "HO-WestEurasia"
 eigen_prefix = "NearEastPublic/westEurasia/HumanOriginsPublic2068.westEurasian"
+file_format = "ANCESTRYMAP"
 n_components = 10
 algo = "PCA"
 n_bootstraps = 100
 n_threads = 20
 seed = 42
+bootstrap_convergence_check = False
 # ---------------
 
 external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
@@ -29,17 +31,16 @@ geno_file_external = pathlib.Path(f"{dataset_prefix}.geno")
 ind_file_external = pathlib.Path(f"{dataset_prefix}.ind")
 snp_file_external = pathlib.Path(f"{dataset_prefix}.snp")
 
-result_prefix_external = external / "results"
+conv_suffix = "convergence" if bootstrap_convergence_check else "no_convergence"
+result_prefix_external = external / "results" / algo / conv_suffix
 
 local = pathlib.Path()
 local_results = local / "results"
 
 
-
-
 rule all:
     input:
-        result_prefix_external / f"{dataset_identifier}.pandora.parquet"
+        result_prefix_external / dataset_identifier / f"{dataset_identifier}.pandora.parquet"
 
 
 rule copy_dataset_to_local:
@@ -62,7 +63,7 @@ rule run_pandora:
         geno_file = rules.copy_dataset_to_local.output.geno_file
     output:
         pandora_results = local_results / "pandora.txt",
-        log = local / "pandora.log"
+        log = local_results / "pandora.log"
     log:
         out = local / "pandora.out",
         err = local / "pandora.err"
@@ -71,13 +72,14 @@ rule run_pandora:
         config_file = local / f"{dataset_identifier}_config.yaml"
 
         config = {
-            'dataset_prefix': str(pathlib.Path(input.geno_file).parent),
+            'dataset_prefix': str(pathlib.Path(input.geno_file).stem),
+            'file_format': file_format,
             'result_dir': str(local_results),
             'n_replicates': n_bootstraps,
             'threads': n_threads,
             'seed': seed,
-            'redo': True,
             'embedding_algorithm': algo,
+            'bootstrap_convergence_check': bootstrap_convergence_check
         }
 
         yaml.dump(config, config_file.open("w"))
@@ -85,20 +87,56 @@ rule run_pandora:
         shell("pandora -c {config_file} > {log.out} 2> {log.err}")
 
 
+rule move_results_to_external:
+    input:
+        rules.run_pandora.output.pandora_results,
+    output:
+        pandora_results_ext = result_prefix_external / dataset_identifier / "pandora.txt",
+        pandora_log_ext = result_prefix_external / dataset_identifier / "pandora.log"
+    run:
+        result_prefix_external.mkdir(exist_ok=True, parents=True)
+        shell(f"mv {local_results} {result_prefix_external}/{dataset_identifier}")
+
+
 rule collect_results:
     input:
-        pandora_results = rules.run_pandora.output.pandora_results,
-        pandora_log = rules.run_pandora.output.log
+        pandora_results = rules.move_results_to_external.output.pandora_results_ext,
+        pandora_log = rules.move_results_to_external.output.pandora_log_ext
     output:
-        summary = local_results / f"{dataset_identifier}.pandora.parquet"
+        summary = result_prefix_external / dataset_identifier / f"{dataset_identifier}.pandora.parquet"
     run:
-        pass
+        results = {
+            "dataset": dataset_identifier,
+            "n_components": n_components,
+            "n_bootstraps": n_bootstraps,
+            "n_threads": n_threads,
+            "seed": seed,
+            "bootstrap_convergence_check": bootstrap_convergence_check,
+            "embedding_algorithm": algo
+        }
+
+        for line in open(input.pandora_log).readlines():
+            line = line.strip()
+            if line.startswith("Pandora Stability"):
+                results["PS"] = float(line.split(":")[1].strip())
+            elif line.startswith("> average"):
+                psv_summary = line.split(":")[1].strip()
+                psv_mean, psv_stdev = psv_summary.split("±")
+                results["PSV_mean"] = float(psv_mean.strip())
+                results["PSV_stdev"] = float(psv_stdev.strip())
+            elif line.startswith("> median"):
+                results["PSV_median"] = float(line.split(":")[1].strip())
+            elif line.startswith("> lowest"):
+                results["PSV_min"] = float(line.split(":")[1].strip())
+            elif line.startswith("> highest"):
+                results["PSV_max"] = float(line.split(":")[1].strip())
+            elif line.startswith("Total runtime"):
+                # Total runtime: 0:53:06 (3186 seconds)
+                _, runtime = line.rsplit("(")
+                runtime = runtime.strip("seconds)")
+                results["runtime"] = int(runtime)
+
+        results = pd.DataFrame(results, index=[0])
+        results.to_parquet(output.summary)
 
 
-rule copy_results_to_external:
-    input:
-        summary = rules.collect_results.output.summary
-    output:
-        summary = result_prefix_external / f"{dataset_identifier}.pandora.parquet"
-    shell:
-        "cp {local_results} {result_prefix_external}"

@@ -13,4 +13,5 @@ dependencies:
   - snakemake
   - pandora-geno
   - scikit-learn
+  - scikit-allel
   - stdpopsim

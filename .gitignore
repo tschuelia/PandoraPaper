@@ -1,6 +1,5 @@
-empirical/**
-!empirical/dataset_preparation/Cayonu.ipynb
-#!empirical/**/*.py
+empirical/dataset_preparation/Cayonu
+empirical/dataset_preparation/NearEastPublic
 
 **/.snakemake
 
