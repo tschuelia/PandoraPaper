@@ -43,23 +43,23 @@ SPECIES = "HomSap"
 MODELS = {
     # model: populations that can't be simulated
     "AshkSub_7G19": [],
-    # "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
-    # "OutOfAfrica_3G09": [],
-    # "OutOfAfrica_2T12": [],
-    # "Africa_1T12": [],
-    # "AmericanAdmixture_4B11": [],
-    # "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
-    # "Zigzag_1S14": [],
-    # "AncientEurasia_9K19": ["BasalEurasian"],
-    # "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
-    # "OutOfAfrica_4J17": [],
-    # "Africa_1B08": [],
-    # "AncientEurope_4A21": [],
+    "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
+    "OutOfAfrica_3G09": [],
+    "OutOfAfrica_2T12": [],
+    "Africa_1T12": [],
+    "AmericanAdmixture_4B11": [],
+    "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
+    "Zigzag_1S14": [],
+    "AncientEurasia_9K19": ["BasalEurasian"],
+    "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
+    "OutOfAfrica_4J17": [],
+    "Africa_1B08": [],
+    "AncientEurope_4A21": [],
 }
 
 
-SEQ_LENGTHS = ["1e5"] #, "1e6"] #, "1e7", "1e8", "1e9"]
-MISSING = [0.01] #], 0.05] #, 0.1, 0.2, 0.5]
+SEQ_LENGTHS = ["1e5", "1e6", "1e7", "1e8",] # "1e9"]
+MISSING = [0.01, 0.05, 0.1, 0.2, 0.5]
 
 OUTDIR_PREFIX = OUTDIR_PREFIX / SPECIES
 
@@ -143,6 +143,7 @@ rule run_pandora:
         config_file = rules.pandora_config.output.config_file,
     output:
         pandora_result = OUTDIR / "results" / "pandora.txt",
+        pandora_log = OUTDIR / "results" / "pandora.log",
         support_values = OUTDIR / "results" / "pandora.supportValues.csv",
     run:
         execute_pandora_config(
@@ -306,6 +307,7 @@ rule run_pandora_ld_pruned:
         config_file = rules.pandora_config_ld_pruned.output.config_file,
     output:
         pandora_result = OUTDIR / "results_ld_pruned" / "pandora.txt",
+        pandora_log = OUTDIR / "results_ld_pruned" / "pandora.log",
         support_values = OUTDIR / "results_ld_pruned" / "pandora.supportValues.csv",
     run:
         execute_pandora_config(
@@ -370,6 +372,7 @@ rule run_pandora_ld_pruned_missing:
         config_file = rules.pandora_config_ld_pruned_missing.output.config_file,
     output:
         pandora_result = OUTDIR / "missing_{missing}" / "results_ld_pruned" / "pandora.txt",
+        pandora_log = OUTDIR / "missing_{missing}" / "results_ld_pruned" / "pandora.log",
         support_values = OUTDIR / "missing_{missing}" / "results_ld_pruned" / "pandora.supportValues.csv",
     run:
         execute_pandora_config(
@@ -381,18 +384,21 @@ rule collect_results:
     input:
         # no missing, no LD pruning
         pandora_result = rules.run_pandora.output.pandora_result,
+        pandora_log = rules.run_pandora.output.pandora_log,
         support_values = rules.run_pandora.output.support_values,
         snp_file = rules.simulate_no_missing.output.snp_file,
         ind_file = rules.simulate_no_missing.output.ind_file,
         geno_file = rules.simulate_no_missing.output.geno_file,
         # no missing, LD pruning
         pandora_result_ld = rules.run_pandora_ld_pruned.output.pandora_result,
+        pandora_log_ld = rules.run_pandora_ld_pruned.output.pandora_log,
         support_values_ld = rules.run_pandora_ld_pruned.output.support_values,
         snp_file_ld = rules.plink_to_eigen.output.snp_file,
         ind_file_ld = rules.plink_to_eigen.output.ind_file,
         geno_file_ld = rules.plink_to_eigen.output.geno_file,
         # missing, LD pruning
         pandora_result_missing = expand(rules.run_pandora_ld_pruned_missing.output.pandora_result, missing=MISSING, allow_missing=True),
+        pandora_log_missing = expand(rules.run_pandora_ld_pruned_missing.output.pandora_log, missing=MISSING, allow_missing=True),
         support_values_missing = expand(rules.run_pandora_ld_pruned_missing.output.support_values, missing=MISSING, allow_missing=True),
         snp_file_missing = expand(rules.add_random_missing_data.output.snp_file, missing=MISSING, allow_missing=True),
         ind_file_missing = expand(rules.add_random_missing_data.output.ind_file, missing=MISSING, allow_missing=True),
@@ -404,7 +410,7 @@ rule collect_results:
         seq_len = lambda wildcards: wildcards.seq_len,
     run:
         results = collect_data_for_experiment(
-            pathlib.Path(input.pandora_result),
+            pathlib.Path(input.pandora_log),
             pathlib.Path(input.support_values),
             pathlib.Path(input.ind_file),
             pathlib.Path(input.snp_file),
@@ -414,7 +420,7 @@ rule collect_results:
         )
 
         results_ld = collect_data_for_experiment(
-            pathlib.Path(input.pandora_result_ld),
+            pathlib.Path(input.pandora_log_ld),
             pathlib.Path(input.support_values_ld),
             pathlib.Path(input.ind_file_ld),
             pathlib.Path(input.snp_file_ld),
@@ -425,7 +431,7 @@ rule collect_results:
 
         results_missing = [
             collect_data_for_experiment(
-                pathlib.Path(input.pandora_result_missing[MISSING.index(missing)]),
+                pathlib.Path(input.pandora_log_missing[MISSING.index(missing)]),
                 pathlib.Path(input.support_values_missing[MISSING.index(missing)]),
                 pathlib.Path(input.ind_file_missing[MISSING.index(missing)]),
                 pathlib.Path(input.snp_file_missing[MISSING.index(missing)]),

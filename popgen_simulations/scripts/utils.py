@@ -65,16 +65,21 @@ def write_pandora_config(
 
 
 def get_pandora_results(pandora_log: pathlib.Path, support_values: pathlib.Path):
-    ps = None
-    with pandora_log.open() as f:
-        for line in f:
-            if line.startswith("Pandora Stability"):
-                ps = float(line.rsplit(maxsplit=1)[1])
-
     psvs = pd.read_csv(support_values, index_col=0)
     psvs["sample_id"] = psvs.index
     psvs.reset_index(drop=True, inplace=True)
-    psvs["PS"] = ps
+
+    for line in pandora_log.open().readlines():
+        line = line.strip()
+        if line.startswith("Pandora Stability"):
+            psvs["PS"] = float(line.split(":")[1].strip())
+        elif line.startswith("Total runtime"):
+            # Total runtime: 0:53:06 (3186 seconds)
+            _, runtime = line.rsplit("(")
+            runtime = runtime.strip("seconds)")
+            psvs["runtime"] = int(runtime)
+
+
     return psvs
 
 
@@ -107,7 +112,7 @@ def get_missing_per_sample(geno_file: pathlib.Path, ind_file: pathlib.Path):
 
 
 def collect_data_for_experiment(
-        pandora_result: pathlib.Path,
+        pandora_log: pathlib.Path,
         support_values: pathlib.Path,
         ind_file: pathlib.Path,
         snp_file: pathlib.Path,
@@ -115,7 +120,7 @@ def collect_data_for_experiment(
         missing_fraction: float,
         ld_pruned: bool
 ):
-    results = get_pandora_results(pandora_result, support_values)
+    results = get_pandora_results(pandora_log, support_values)
     results["missing"] = missing_fraction
     results["n_samples"], results["n_snps"] = get_n_samples_n_snps(ind_file, snp_file)
     results["ld_pruned"] = ld_pruned
