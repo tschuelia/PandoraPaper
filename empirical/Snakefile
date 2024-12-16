@@ -16,7 +16,7 @@ import yaml
 # ---------------
 dataset_identifier = "HO-Cayonu"
 eigen_prefix = "Cayonu/westEurasian_ancient/Cayonu_ModernWestEurasia"
-embedding_populations = "Cayonu/modern.population.txt"
+embedding_populations = "Cayonu/westEurasian_ancient/modern.poplist.txt"
 file_format = "ANCESTRYMAP"
 
 algo = "PCA"
@@ -92,7 +92,7 @@ rule run_pandora:
         }
 
         if emb_file_external is not None:
-            config["embedding_populations"] = local / f"{dataset_identifier}.populations.txt"
+            config["embedding_populations"] = str(local / f"{dataset_identifier}.populations.txt")
 
         yaml.dump(config, config_file.open("w"))
 
