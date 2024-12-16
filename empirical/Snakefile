@@ -15,11 +15,13 @@ import yaml
 # CONFIG
 # ---------------
 dataset_identifier = "HO-Cayonu"
-eigen_prefix = "Cayonu/Cayonu_ModernWestEurasia"
+eigen_prefix = "Cayonu/westEurasian_ancient/Cayonu_ModernWestEurasia"
 embedding_populations = "Cayonu/modern.population.txt"
 file_format = "ANCESTRYMAP"
-n_components = 10
+
 algo = "PCA"
+n_components = 10
+
 n_bootstraps = 100
 n_threads = 20
 seed = 42
@@ -54,11 +56,14 @@ rule copy_dataset_to_local:
         geno_file = local / f"{dataset_identifier}.geno",
         ind_file = local / f"{dataset_identifier}.ind",
         snp_file = local / f"{dataset_identifier}.snp"
-    shell:
-        "cp {input.geno_file} {output.geno_file} && "
-        "cp {input.ind_file} {output.ind_file} && "
-        "cp {input.snp_file} {output.snp_file}"
+    run:
+        shell("cp {input.geno_file} {output.geno_file}")
+        shell("cp {input.ind_file} {output.ind_file}")
+        shell("cp {input.snp_file} {output.snp_file}")
 
+        if embedding_populations is not None:
+            emb_file = local / f"{dataset_identifier}.populations.txt"
+            shell("cp {embedding_populations} {emb_file}")
 
 rule run_pandora:
     input:
@@ -85,7 +90,7 @@ rule run_pandora:
         }
 
         if embedding_populations is not None:
-            config["embedding_populations"] = embedding_populations
+            config["embedding_populations"] = local / f"{dataset_identifier}.populations.txt"
 
         yaml.dump(config, config_file.open("w"))
 
