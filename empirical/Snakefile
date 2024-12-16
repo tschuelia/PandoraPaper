@@ -35,6 +35,8 @@ geno_file_external = pathlib.Path(f"{dataset_prefix}.geno")
 ind_file_external = pathlib.Path(f"{dataset_prefix}.ind")
 snp_file_external = pathlib.Path(f"{dataset_prefix}.snp")
 
+emb_file_external = external / "datasets" / embedding_populations if embedding_populations is not None else None
+
 conv_suffix = "convergence" if bootstrap_convergence_check else "no_convergence"
 result_prefix_external = external / "results" / algo / conv_suffix
 
@@ -61,9 +63,9 @@ rule copy_dataset_to_local:
         shell("cp {input.ind_file} {output.ind_file}")
         shell("cp {input.snp_file} {output.snp_file}")
 
-        if embedding_populations is not None:
+        if emb_file_external is not None:
             emb_file = local / f"{dataset_identifier}.populations.txt"
-            shell("cp {embedding_populations} {emb_file}")
+            shell("cp {emb_file_external} {emb_file}")
 
 rule run_pandora:
     input:
@@ -89,7 +91,7 @@ rule run_pandora:
             "bootstrap_convergence_check": bootstrap_convergence_check
         }
 
-        if embedding_populations is not None:
+        if emb_file_external is not None:
             config["embedding_populations"] = local / f"{dataset_identifier}.populations.txt"
 
         yaml.dump(config, config_file.open("w"))
