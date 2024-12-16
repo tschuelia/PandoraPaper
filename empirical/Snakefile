@@ -7,14 +7,16 @@ the external file system. This is why we copy the files to a local directory bef
 the results back to the external file system afterward.
 """
 import pathlib
+
 import pandas as pd
 import yaml
 
 
 # CONFIG
 # ---------------
-dataset_identifier = "HO-WestEurasia"
-eigen_prefix = "NearEastPublic/westEurasia/HumanOriginsPublic2068.westEurasian"
+dataset_identifier = "HO-Cayonu"
+eigen_prefix = "Cayonu/Cayonu_ModernWestEurasia"
+embedding_populations = "Cayonu/modern.population.txt"
 file_format = "ANCESTRYMAP"
 n_components = 10
 algo = "PCA"
@@ -72,15 +74,18 @@ rule run_pandora:
         config_file = local / f"{dataset_identifier}_config.yaml"
 
         config = {
-            'dataset_prefix': str(pathlib.Path(input.geno_file).stem),
-            'file_format': file_format,
-            'result_dir': str(local_results),
-            'n_replicates': n_bootstraps,
-            'threads': n_threads,
-            'seed': seed,
-            'embedding_algorithm': algo,
-            'bootstrap_convergence_check': bootstrap_convergence_check
+            "dataset_prefix": str(pathlib.Path(input.geno_file).stem),
+            "file_format": file_format,
+            "result_dir": str(local_results),
+            "n_replicates": n_bootstraps,
+            "threads": n_threads,
+            "seed": seed,
+            "embedding_algorithm": algo,
+            "bootstrap_convergence_check": bootstrap_convergence_check
         }
+
+        if embedding_populations is not None:
+            config["embedding_populations"] = embedding_populations
 
         yaml.dump(config, config_file.open("w"))
 

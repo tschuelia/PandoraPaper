@@ -162,5 +162,5 @@ def execute_pandora_config(config_file: pathlib.Path):
     shell(f"pandora -c {local_config_file} > {outfile} 2> {errorfile}")
 
     # 3. Move the files back to the original target destination
-    shell(f"mv {local_result_dir} {result_dir.parent}")
+    shell(f"mv {local_result_dir}/* {result_dir}/")
     shell(f"rm -rf {local_tmp_dir}")

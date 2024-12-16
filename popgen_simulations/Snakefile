@@ -23,13 +23,13 @@ if "/Users/julia" in os.getcwd():
     N_THREADS = 2
     OUTDIR_PREFIX = pathlib.Path("/tmp/")
 else:
-    PLINK2 = pathlib.Path("plink2")
-    CONVERTF = pathlib.Path("convertf")
-    SMARTPCA = pathlib.Path("smartpca")
+    PLINK2 = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/plink2")
+    CONVERTF = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/convertf")
+    SMARTPCA = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/smartpca")
 
     N_BOOTSTRAPS = 100
     N_THREADS = 20
-    OUTDIR_PREFIX = pathlib.Path()
+    OUTDIR_PREFIX = pathlib.Path("/hits")
 
 
 ALL_POPULATIONS = True
