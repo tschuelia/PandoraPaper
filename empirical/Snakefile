@@ -25,7 +25,7 @@ n_components = 10
 n_bootstraps = 100
 n_threads = 20
 seed = 42
-bootstrap_convergence_check = False
+bootstrap_convergence_check = True
 # ---------------
 
 external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
@@ -128,6 +128,13 @@ rule collect_results:
             "embedding_algorithm": algo
         }
 
+        if bootstrap_convergence_check:
+            results["convergence"] = True
+            results["convergence_tolerance"] = 0.05
+        else:
+            results["convergence"] = False
+            results["convergence_tolerance"] = None
+
         for line in open(input.pandora_log).readlines():
             line = line.strip()
             if line.startswith("Pandora Stability"):
@@ -148,6 +155,10 @@ rule collect_results:
                 _, runtime = line.rsplit("(")
                 runtime = runtime.strip("seconds)")
                 results["runtime"] = int(runtime)
+            elif line.startswith("> Number of replicates computed"):
+                results["n_replicates"] = int(line.split(":")[1].strip())
+            elif line.startswith("> Number of Kmeans clusters"):
+                results["n_clusters"] = int(line.split(":")[1].strip())
 
         results = pd.DataFrame(results, index=[0])
         results.to_parquet(output.summary)
