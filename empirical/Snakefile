@@ -26,6 +26,7 @@ n_bootstraps = 100
 n_threads = 20
 seed = 42
 bootstrap_convergence_check = True
+convergence_tolerance = 0.05
 # ---------------
 
 external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
@@ -37,7 +38,7 @@ snp_file_external = pathlib.Path(f"{dataset_prefix}.snp")
 
 emb_file_external = external / "datasets" / embedding_populations if embedding_populations is not None else None
 
-conv_suffix = "convergence" if bootstrap_convergence_check else "no_convergence"
+conv_suffix = f"convergence_{int(convergence_tolerance * 100)}" if bootstrap_convergence_check else "no_convergence"
 result_prefix_external = external / "results" / algo / conv_suffix
 
 local = pathlib.Path()
@@ -130,7 +131,7 @@ rule collect_results:
 
         if bootstrap_convergence_check:
             results["convergence"] = True
-            results["convergence_tolerance"] = 0.05
+            results["convergence_tolerance"] = convergence_tolerance
         else:
             results["convergence"] = False
             results["convergence_tolerance"] = None
