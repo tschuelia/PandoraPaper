@@ -41,7 +41,7 @@ emb_file_external = external / "datasets" / embedding_populations if embedding_p
 conv_suffix = f"convergence_{int(convergence_tolerance * 100)}" if bootstrap_convergence_check else "no_convergence"
 result_prefix_external = external / "results" / algo / conv_suffix
 
-local = pathlib.Path()
+local = pathlib.Path("tmpdir")
 local_results = local / "results"
 
 
@@ -99,6 +99,9 @@ rule run_pandora:
 
         shell("pandora -c {config_file} > {log.out} 2> {log.err}")
 
+        # remove the config file
+        config_file.unlink()
+
 
 rule move_results_to_external:
     input:
@@ -110,6 +113,9 @@ rule move_results_to_external:
         outdir = result_prefix_external / dataset_identifier
         outdir.mkdir(exist_ok=True, parents=True)
         shell(f"mv {local_results}/* {outdir}/")
+
+        # remove local dataset
+        shell(f"rm {local}/*")
 
 
 rule collect_results:
