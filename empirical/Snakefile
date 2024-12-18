@@ -126,6 +126,7 @@ rule collect_results:
             "n_threads": n_threads,
             "seed": seed,
             "bootstrap_convergence_check": bootstrap_convergence_check,
+            "bootstrap_convergence_tolerance": convergence_tolerance,
             "embedding_algorithm": algo
         }
 
