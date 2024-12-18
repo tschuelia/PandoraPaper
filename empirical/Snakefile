@@ -91,6 +91,7 @@ rule run_pandora:
             "threads": n_threads,
             "seed": seed,
             "embedding_algorithm": algo,
+            "n_components": n_components,
             "bootstrap_convergence_check": bootstrap_convergence_check,
             "bootstrap_convergence_tolerance": convergence_tolerance
         }
