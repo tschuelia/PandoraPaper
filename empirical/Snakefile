@@ -80,9 +80,11 @@ rule run_pandora:
     run:
         # Create Pandora config file
         config_file = local / f"{dataset_identifier}_config.yaml"
+        geno_file = pathlib.Path(input.geno_file)
+        dataset_prefix = geno_file.parent / geno_file.stem
 
         config = {
-            "dataset_prefix": str(pathlib.Path(input.geno_file).stem),
+            "dataset_prefix": str(dataset_prefix),
             "file_format": file_format,
             "result_dir": str(local_results),
             "n_replicates": n_bootstraps,
