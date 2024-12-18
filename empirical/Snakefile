@@ -20,7 +20,7 @@ embedding_populations = "Cayonu/westEurasian_ancient/modern.poplist.txt"
 file_format = "ANCESTRYMAP"
 
 algo = "PCA"
-n_components = 10
+n_components = 10 if algo == "PCA" else 2
 
 n_bootstraps = 100
 n_threads = 20
