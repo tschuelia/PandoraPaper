@@ -44,21 +44,28 @@ def write_pandora_config(
         n_threads: int,
         seed: int,
         smartpca: pathlib.Path,
-        n_populations: int
+        n_populations: int,
+        algo: str,
+        n_components: int,
+        bootstrap_convergence_check: bool,
+        convergence_tolerance: float
 ):
     config = {
-        'dataset_prefix': str(eigen_prefix.absolute()),
-        'result_dir': str(result_dir.absolute()),
-        'n_replicates': n_bootstraps,
-        'threads': n_threads,
-        'seed': seed,
-        'plot_results': True,
-        'kmeans_k': n_populations,
-        'keep_replicates': False,
-        'smartpca': str(smartpca.absolute()),
-        'smartpca_optional_settings': {
-            'numoutlieriter': 0
-        }
+        "dataset_prefix": str(eigen_prefix.absolute()),
+        "result_dir": str(result_dir.absolute()),
+        "n_replicates": n_bootstraps,
+        "threads": n_threads,
+        "seed": seed,
+        "plot_results": True,
+        "kmeans_k": n_populations,
+        "smartpca": str(smartpca.absolute()),
+        "smartpca_optional_settings": {
+            "numoutlieriter": 0
+        },
+        "embedding_algorithm": algo,
+        "n_components": n_components,
+        "bootstrap_convergence_check": bootstrap_convergence_check,
+        "bootstrap_convergence_tolerance": convergence_tolerance
     }
 
     yaml.dump(config, config_file.open("w"))
@@ -78,6 +85,10 @@ def get_pandora_results(pandora_log: pathlib.Path, support_values: pathlib.Path)
             _, runtime = line.rsplit("(")
             runtime = runtime.strip("seconds)")
             psvs["runtime"] = int(runtime)
+        elif line.startswith("> Number of replicates computed"):
+            psvs["n_replicates"] = int(line.split(":")[1].strip())
+        elif line.startswith("> Number of Kmeans clusters"):
+            psvs["n_clusters"] = int(line.split(":")[1].strip())
 
 
     return psvs
@@ -118,12 +129,16 @@ def collect_data_for_experiment(
         snp_file: pathlib.Path,
         geno_file: pathlib.Path,
         missing_fraction: float,
-        ld_pruned: bool
+        ld_pruned: bool,
+        convergence: bool,
+        convergence_tolerance: bool,
 ):
     results = get_pandora_results(pandora_log, support_values)
     results["missing"] = missing_fraction
     results["n_samples"], results["n_snps"] = get_n_samples_n_snps(ind_file, snp_file)
     results["ld_pruned"] = ld_pruned
+    results["convergence"] = convergence
+    results["convergence_tolerance"] = convergence_tolerance
 
     missing_per_sample = get_missing_per_sample(geno_file, ind_file)
     results = pd.merge(results, missing_per_sample, on="sample_id")

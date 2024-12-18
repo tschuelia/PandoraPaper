@@ -19,7 +19,7 @@ if "/Users/julia" in os.getcwd():
     CONVERTF = pathlib.Path("/Users/julia/micromamba/envs/trash/bin/convertf")
     SMARTPCA = pathlib.Path("/Users/julia/micromamba/envs/trash/bin/smartpca")
 
-    N_BOOTSTRAPS = 10
+    N_BOOTSTRAPS = 20
     N_THREADS = 2
     OUTDIR_PREFIX = pathlib.Path("/tmp/")
 else:
@@ -29,8 +29,14 @@ else:
 
     N_BOOTSTRAPS = 100
     N_THREADS = 20
-    OUTDIR_PREFIX = pathlib.Path("/hits")
+    OUTDIR_PREFIX = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/popgen_simulations/")
 
+
+ALGO = "PCA"
+N_COMPONENTS = 10
+
+BOOTSTRAP_CONVERGENCE_CHECK = True
+CONVERGENCE_TOLERANCE = 0.05
 
 ALL_POPULATIONS = True
 POPULATION_INDEX = 0
@@ -43,25 +49,27 @@ SPECIES = "HomSap"
 MODELS = {
     # model: populations that can't be simulated
     "AshkSub_7G19": [],
-    "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
-    "OutOfAfrica_3G09": [],
-    "OutOfAfrica_2T12": [],
-    "Africa_1T12": [],
-    "AmericanAdmixture_4B11": [],
-    "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
-    "Zigzag_1S14": [],
-    "AncientEurasia_9K19": ["BasalEurasian"],
-    "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
-    "OutOfAfrica_4J17": [],
-    "Africa_1B08": [],
-    "AncientEurope_4A21": [],
+    # "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
+    # "OutOfAfrica_3G09": [],
+    # "OutOfAfrica_2T12": [],
+    # "Africa_1T12": [],
+    # "AmericanAdmixture_4B11": [],
+    # "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
+    # "Zigzag_1S14": [],
+    # "AncientEurasia_9K19": ["BasalEurasian"],
+    # "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
+    # "OutOfAfrica_4J17": [],
+    # "Africa_1B08": [],
+    # "AncientEurope_4A21": [],
 }
 
 
-SEQ_LENGTHS = ["1e5", "1e6", "1e7", "1e8",] # "1e9"]
-MISSING = [0.01, 0.05, 0.1, 0.2, 0.5]
+SEQ_LENGTHS = ["1e5"] #, "1e6", "1e7", "1e8",] # "1e9"]
+MISSING = [0.01, 0.05] #, 0.1, 0.2, 0.5]
 
-OUTDIR_PREFIX = OUTDIR_PREFIX / SPECIES
+
+conv_suffix = f"convergence_{int(CONVERGENCE_TOLERANCE * 100)}" if BOOTSTRAP_CONVERGENCE_CHECK else "no_convergence"
+OUTDIR_PREFIX = OUTDIR_PREFIX / "results" / ALGO / conv_suffix / SPECIES
 
 N_SAMPLES_TOTAL = 500
 
@@ -134,7 +142,11 @@ rule pandora_config:
             n_threads=N_THREADS,
             seed=SEED,
             smartpca=SMARTPCA,
-            n_populations=len(get_populations_for_model(params.model))
+            n_populations=len(get_populations_for_model(params.model)),
+            algo=ALGO,
+            n_components=N_COMPONENTS,
+            bootstrap_convergence_check=BOOTSTRAP_CONVERGENCE_CHECK,
+            convergence_tolerance=CONVERGENCE_TOLERANCE
         )
 
 
@@ -298,7 +310,11 @@ rule pandora_config_ld_pruned:
             n_threads=N_THREADS,
             seed=SEED,
             smartpca=SMARTPCA,
-            n_populations=len(get_populations_for_model(params.model))
+            n_populations=len(get_populations_for_model(params.model)),
+            algo=ALGO,
+            n_components=N_COMPONENTS,
+            bootstrap_convergence_check=BOOTSTRAP_CONVERGENCE_CHECK,
+            convergence_tolerance=CONVERGENCE_TOLERANCE
         )
 
 
@@ -363,7 +379,11 @@ rule pandora_config_ld_pruned_missing:
             n_threads=N_THREADS,
             seed=SEED,
             smartpca=SMARTPCA,
-            n_populations=len(get_populations_for_model(params.model))
+            n_populations=len(get_populations_for_model(params.model)),
+            algo=ALGO,
+            n_components=N_COMPONENTS,
+            bootstrap_convergence_check=BOOTSTRAP_CONVERGENCE_CHECK,
+            convergence_tolerance=CONVERGENCE_TOLERANCE
         )
 
 
@@ -416,7 +436,9 @@ rule collect_results:
             pathlib.Path(input.snp_file),
             pathlib.Path(input.geno_file),
             0.0,
-            False
+            False,
+            BOOTSTRAP_CONVERGENCE_CHECK,
+            CONVERGENCE_TOLERANCE
         )
 
         results_ld = collect_data_for_experiment(
@@ -426,7 +448,9 @@ rule collect_results:
             pathlib.Path(input.snp_file_ld),
             pathlib.Path(input.geno_file_ld),
             0.0,
-            True
+            True,
+            BOOTSTRAP_CONVERGENCE_CHECK,
+            CONVERGENCE_TOLERANCE
         )
 
         results_missing = [
@@ -437,7 +461,9 @@ rule collect_results:
                 pathlib.Path(input.snp_file_missing[MISSING.index(missing)]),
                 pathlib.Path(input.geno_file_missing[MISSING.index(missing)]),
                 missing,
-                True
+                True,
+                BOOTSTRAP_CONVERGENCE_CHECK,
+                CONVERGENCE_TOLERANCE
             )
             for missing
             in MISSING
