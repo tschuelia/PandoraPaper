@@ -34,11 +34,13 @@ else:
 
 ALGO = "PCA"
 N_COMPONENTS = 10 if ALGO == "PCA" else 2
+print(ALGO, N_COMPONENTS)
 
-BOOTSTRAP_CONVERGENCE_CHECK = True
-CONVERGENCE_TOLERANCE = 0.05
+BOOTSTRAP_CONVERGENCE_CHECK = False
 
-ALL_POPULATIONS = True
+CONVERGENCE_TOLERANCE = 0.01
+
+ALL_POPULATIONS = False
 POPULATION_INDEX = 0
 
 
@@ -49,27 +51,30 @@ SPECIES = "HomSap"
 MODELS = {
     # model: populations that can't be simulated
     "AshkSub_7G19": [],
-    # "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
-    # "OutOfAfrica_3G09": [],
-    # "OutOfAfrica_2T12": [],
-    # "Africa_1T12": [],
-    # "AmericanAdmixture_4B11": [],
-    # "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
-    # "Zigzag_1S14": [],
-    # "AncientEurasia_9K19": ["BasalEurasian"],
-    # "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
-    # "OutOfAfrica_4J17": [],
-    # "Africa_1B08": [],
-    # "AncientEurope_4A21": [],
+    "OutOfAfricaExtendedNeandertalAdmixturePulse_3I21": [],
+    "OutOfAfrica_3G09": [],
+    "OutOfAfrica_2T12": [],
+    "Africa_1T12": [],
+    "AmericanAdmixture_4B11": [],
+    "OutOfAfricaArchaicAdmixture_5R19": ["Neanderthal", "ArchaicAFR"],
+    "Zigzag_1S14": [],
+    "AncientEurasia_9K19": ["BasalEurasian"],
+    "PapuansOutOfAfrica_10J19": ["Den1", "Den2", "Nea1", "Ghost"],
+    "OutOfAfrica_4J17": [],
+    "Africa_1B08": [],
+    "AncientEurope_4A21": [],
 }
 
 
-SEQ_LENGTHS = ["1e5"] #, "1e6", "1e7", "1e8",] # "1e9"]
-MISSING = [0.01, 0.05] #, 0.1, 0.2, 0.5]
+SEQ_LENGTHS = ["1e5", "1e6", "1e7", "1e8",] # "1e9"]
+MISSING = [0.01, 0.05, 0.1, 0.2, 0.5]
 
 
 conv_suffix = f"convergence_{int(CONVERGENCE_TOLERANCE * 100)}" if BOOTSTRAP_CONVERGENCE_CHECK else "no_convergence"
 OUTDIR_PREFIX = OUTDIR_PREFIX / "results" / ALGO / conv_suffix / SPECIES
+
+if not ALL_POPULATIONS:
+    OUTDIR_PREFIX = OUTDIR_PREFIX / ("single_population_" + str(POPULATION_INDEX))
 
 N_SAMPLES_TOTAL = 500
 
