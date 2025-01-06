@@ -11,13 +11,16 @@ import pathlib
 import pandas as pd
 import yaml
 
+from pandora.converter import get_filenames
+from pandora.custom_types import FileFormat
+
 
 # CONFIG
 # ---------------
-dataset_identifier = "HO-Cayonu"
-eigen_prefix = "Cayonu/westEurasian_ancient/Cayonu_ModernWestEurasia"
-embedding_populations = "Cayonu/westEurasian_ancient/modern.poplist.txt"
-file_format = "ANCESTRYMAP"
+dataset_identifier = "Darwins_Ark_Mixed_Breed"
+eigen_prefix = "Dogs/GeneticData/eigenformat/DarwinsArk_gp-0.70_snps-only_maf-0.02_geno-0.20_hwe-midp-1e-20_het-0.25-1.00_N-2155"
+embedding_populations = None
+file_format = "EIGENSTRAT"
 
 algo = "PCA"
 n_components = 10 if algo == "PCA" else 2
@@ -32,9 +35,7 @@ convergence_tolerance = 0.05
 external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
 dataset_prefix = external / "datasets" / eigen_prefix
 
-geno_file_external = pathlib.Path(f"{dataset_prefix}.geno")
-ind_file_external = pathlib.Path(f"{dataset_prefix}.ind")
-snp_file_external = pathlib.Path(f"{dataset_prefix}.snp")
+geno_file_external, snp_file_external, ind_file_external = get_filenames(dataset_prefix, FileFormat(file_format))
 
 emb_file_external = external / "datasets" / embedding_populations if embedding_populations is not None else None
 
@@ -43,6 +44,8 @@ result_prefix_external = external / "results" / algo / conv_suffix
 
 local = pathlib.Path("tmpdir")
 local_results = local / "results"
+
+geno_file_local, snp_file_local, ind_file_local = get_filenames(local / dataset_identifier, FileFormat(file_format))
 
 
 rule all:
@@ -56,9 +59,9 @@ rule copy_dataset_to_local:
         ind_file = ind_file_external,
         snp_file = snp_file_external
     output:
-        geno_file = local / f"{dataset_identifier}.geno",
-        ind_file = local / f"{dataset_identifier}.ind",
-        snp_file = local / f"{dataset_identifier}.snp"
+        geno_file = geno_file_local,
+        ind_file = ind_file_local,
+        snp_file = snp_file_local
     run:
         shell("cp {input.geno_file} {output.geno_file}")
         shell("cp {input.ind_file} {output.ind_file}")
@@ -117,9 +120,6 @@ rule move_results_to_external:
         outdir = result_prefix_external / dataset_identifier
         outdir.mkdir(exist_ok=True, parents=True)
         shell(f"mv {local_results}/* {outdir}/")
-
-        # remove local dataset
-        shell(f"rm {local}/*")
 
 
 rule collect_results:

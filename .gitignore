@@ -1,5 +1,6 @@
 empirical/dataset_preparation/Cayonu
 empirical/dataset_preparation/NearEastPublic
+empirical/dataset_preparation/DogGenomes
 
 **/.snakemake
 
