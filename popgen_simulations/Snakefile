@@ -12,6 +12,7 @@ from scripts.utils import collect_data_for_experiment, execute_pandora_config, w
     write_pandora_config, write_snp_file
 
 
+# TODO: if you rerun this, make sure to update all paths according to your setup
 PLINK = pathlib.Path("plink")
 
 if "/Users/julia" in os.getcwd():
@@ -36,18 +37,12 @@ ALGO = "PCA"
 N_COMPONENTS = 10 if ALGO == "PCA" else 2
 print(ALGO, N_COMPONENTS)
 
-BOOTSTRAP_CONVERGENCE_CHECK = False
-
-CONVERGENCE_TOLERANCE = 0.01
-
-ALL_POPULATIONS = False
-POPULATION_INDEX = 0
-
+BOOTSTRAP_CONVERGENCE_CHECK = True
+CONVERGENCE_TOLERANCE = 0.05
 
 SEED = 42
 
 SPECIES = "HomSap"
-
 MODELS = {
     # model: populations that can't be simulated
     "AshkSub_7G19": [],
@@ -66,40 +61,42 @@ MODELS = {
 }
 
 
-SEQ_LENGTHS = ["1e5", "1e6", "1e7", "1e8",] # "1e9"]
+SEQ_LENGTHS = ["1e5", "1e6", "1e7", "1e8"]
 MISSING = [0.01, 0.05, 0.1, 0.2, 0.5]
-
+NOISE = [0.1, 0.2, 0.5]
 
 conv_suffix = f"convergence_{int(CONVERGENCE_TOLERANCE * 100)}" if BOOTSTRAP_CONVERGENCE_CHECK else "no_convergence"
 OUTDIR_PREFIX = OUTDIR_PREFIX / "results" / ALGO / conv_suffix / SPECIES
 
-if not ALL_POPULATIONS:
-    OUTDIR_PREFIX = OUTDIR_PREFIX / ("single_population_" + str(POPULATION_INDEX))
-
 N_SAMPLES_TOTAL = 500
 
-if ALL_POPULATIONS:
-    OUTDIR = OUTDIR_PREFIX / ("{model}_{seq_len}_" + str(N_SAMPLES_TOTAL))
-    OUTFILE = OUTDIR_PREFIX / f"all_results.parquet"
-else:
-    OUTDIR = OUTDIR_PREFIX / ("{model}_{seq_len}_single_population_" + str(POPULATION_INDEX) + "_" + str(N_SAMPLES_TOTAL))
-    OUTFILE = OUTDIR_PREFIX / f"all_results_population_{POPULATION_INDEX}.parquet"
+OUTDIR = OUTDIR_PREFIX / ("{model}_{seq_len}_" + str(N_SAMPLES_TOTAL))
+
+outfile_name = "results"
+
+if MISSING:
+    outfile_name += "_missing"
+if NOISE:
+    outfile_name += "_noise"
+
+outfile_name += ".parquet"
+
+OUTFILE = OUTDIR_PREFIX / outfile_name
 
 
 def get_populations_for_model(model):
-    if ALL_POPULATIONS:
-        species = stdpopsim.get_species(SPECIES)
-        dem_model = species.get_demographic_model(model)
-        return [p for p in dem_model.populations if p.name not in MODELS[model]]
-    else:
-        return [stdpopsim.get_species(SPECIES).get_demographic_model(model).populations[POPULATION_INDEX]]
+    species = stdpopsim.get_species(SPECIES)
+    dem_model = species.get_demographic_model(model)
+    return [p for p in dem_model.populations if p.name not in MODELS[model]]
 
 
 rule all:
     input:
         OUTFILE
 
-
+# ------------------------------------------
+# Simulate base data (no missing, no noise)
+# ------------------------------------------
 rule simulate_no_missing:
     output:
         geno_file = OUTDIR / f"no_missing.geno",
@@ -124,7 +121,10 @@ rule simulate_no_missing:
         write_snp_file(ts, pathlib.Path(output.snp_file))
         write_geno_file(ts, pathlib.Path(output.geno_file))
 
-
+# -------------------------------------------------
+# Pandora for the base data (no missing, no noise)
+# -------------------------------------------------
+# Write the pandora config file
 rule pandora_config:
     input:
         geno_file = rules.simulate_no_missing.output.geno_file,
@@ -154,7 +154,7 @@ rule pandora_config:
             convergence_tolerance=CONVERGENCE_TOLERANCE
         )
 
-
+# Run Pandora (dataset not LD pruned)
 rule run_pandora:
     input:
         config_file = rules.pandora_config.output.config_file,
@@ -168,6 +168,11 @@ rule run_pandora:
         )
 
 
+# -------------------------------------------------
+# Pandora for the base data (no missing, no noise)
+# LD Pruned and MAF filtered
+# -------------------------------------------------
+# Convert the EIGEN dataset to PLINK
 rule eigen_to_plink:
     input:
         geno_file = rules.simulate_no_missing.output.geno_file,
@@ -187,7 +192,7 @@ rule eigen_to_plink:
             out_format=FileFormat.PACKEDPED,
         )
 
-
+# MAF filtering (1%)
 rule maf_filtering:
     input:
         geno_file = rules.eigen_to_plink.output.geno_file,
@@ -216,7 +221,7 @@ rule maf_filtering:
         cmd = " ".join(plink_cmd) + " > {log.out} 2> {log.err}"
         shell(cmd)
 
-
+# LD Pruning (r2=0.5, window=50, step=5)
 rule ld_pruning:
     input:
         geno_file = rules.maf_filtering.output.geno_file,
@@ -262,7 +267,7 @@ rule ld_pruning:
 
         shell(cmd)
 
-
+# Reconvert the PLINK files to EIGEN
 rule plink_to_eigen:
     input:
         geno_file = rules.ld_pruning.output.geno_file,
@@ -292,7 +297,7 @@ rule plink_to_eigen:
         else:
             raise ValueError("Individual IDs do not match between the original and the new ind files")
 
-
+# Write the pandora config file
 rule pandora_config_ld_pruned:
     input:
         geno_file = rules.plink_to_eigen.output.geno_file,
@@ -322,7 +327,7 @@ rule pandora_config_ld_pruned:
             convergence_tolerance=CONVERGENCE_TOLERANCE
         )
 
-
+# Run Pandora (dataset LD pruned and MAF filtered)
 rule run_pandora_ld_pruned:
     input:
         config_file = rules.pandora_config_ld_pruned.output.config_file,
@@ -335,7 +340,9 @@ rule run_pandora_ld_pruned:
             config_file=pathlib.Path(input.config_file),
         )
 
-
+# -------------------------------------------------
+# Pandora for dataset with missing data (no noise)
+# -------------------------------------------------
 rule add_random_missing_data:
     input:
         geno_file = rules.plink_to_eigen.output.geno_file,
@@ -356,12 +363,12 @@ rule add_random_missing_data:
         geno = geno.astype(np.int8)
 
         num_missing = int(params.missing * geno.size)
-        missing_indices = np.random.choice(geno.size,num_missing,replace=False)
+        missing_indices = np.random.choice(geno.size, num_missing, replace=False)
 
         geno.ravel()[missing_indices] = 9
         open(output.geno_file, "w").writelines(["".join(row) + "\n" for row in geno.astype(str)])
 
-
+# Write the pandora config file
 rule pandora_config_ld_pruned_missing:
     input:
         geno_file = rules.add_random_missing_data.output.geno_file,
@@ -391,7 +398,7 @@ rule pandora_config_ld_pruned_missing:
             convergence_tolerance=CONVERGENCE_TOLERANCE
         )
 
-
+# Run Pandora (dataset with missing data)
 rule run_pandora_ld_pruned_missing:
     input:
         config_file = rules.pandora_config_ld_pruned_missing.output.config_file,
@@ -405,29 +412,111 @@ rule run_pandora_ld_pruned_missing:
         )
 
 
+# --------------------------------------------
+# Pandora for dataset with noise (no missing)
+# --------------------------------------------
+rule add_random_noise_data:
+    input:
+        geno_file = rules.plink_to_eigen.output.geno_file,
+        snp_file = rules.plink_to_eigen.output.snp_file,
+        ind_file = rules.plink_to_eigen.output.ind_file,
+    output:
+        geno_file = OUTDIR / "noise_{noise}" / "noise_{noise}_ld_pruned.geno",
+        snp_file = OUTDIR / "noise_{noise}" / "noise_{noise}_ld_pruned.snp",
+        ind_file = OUTDIR / "noise_{noise}" / "noise_{noise}_ld_pruned.ind",
+    params:
+        noise = lambda wildcards: float(wildcards.noise),
+    run:
+        shutil.copy(input.ind_file, output.ind_file)
+        shutil.copy(input.geno_file, output.geno_file)
+        shutil.copy(input.snp_file, output.snp_file)
+
+        geno = np.array([list(line.strip()) for line in open(output.geno_file).readlines()])
+        geno = geno.astype(np.int8)
+
+        num_noise = int(params.noise * geno.size)
+        noise_indices = np.random.choice(geno.size, num_noise, replace=False)
+        noise_values = np.random.choice([0, 1, 2], num_noise)
+
+        geno.ravel()[noise_indices] = noise_values
+        open(output.geno_file, "w").writelines(["".join(row) + "\n" for row in geno.astype(str)])
+
+# Write the pandora config file
+rule pandora_config_ld_pruned_noise:
+    input:
+        geno_file = rules.add_random_noise_data.output.geno_file,
+        snp_file = rules.add_random_noise_data.output.snp_file,
+        ind_file = rules.add_random_noise_data.output.ind_file,
+    output:
+        config_file = OUTDIR / "noise_{noise}" / "pandora_config_ld_pruned.yaml",
+    params:
+        model = lambda wildcards: wildcards.model
+    run:
+        config_file = pathlib.Path(output.config_file)
+        eigen_prefix = pathlib.Path(input.geno_file).with_suffix("")
+        result_dir = eigen_prefix.parent / "results_ld_pruned"
+
+        write_pandora_config(
+            eigen_prefix=eigen_prefix,
+            result_dir=result_dir,
+            config_file=config_file,
+            n_bootstraps=N_BOOTSTRAPS,
+            n_threads=N_THREADS,
+            seed=SEED,
+            smartpca=SMARTPCA,
+            n_populations=len(get_populations_for_model(params.model)),
+            algo=ALGO,
+            n_components=N_COMPONENTS,
+            bootstrap_convergence_check=BOOTSTRAP_CONVERGENCE_CHECK,
+            convergence_tolerance=CONVERGENCE_TOLERANCE
+        )
+
+# Run Pandora (dataset with noise)
+rule run_pandora_ld_pruned_noise:
+    input:
+        config_file = rules.pandora_config_ld_pruned_noise.output.config_file,
+    output:
+        pandora_result = OUTDIR / "noise_{noise}" / "results_ld_pruned" / "pandora.txt",
+        pandora_log = OUTDIR / "noise_{noise}" / "results_ld_pruned" / "pandora.log",
+        support_values = OUTDIR / "noise_{noise}" / "results_ld_pruned" / "pandora.supportValues.csv",
+    run:
+        execute_pandora_config(
+            config_file=pathlib.Path(input.config_file),
+        )
+
+# ----------------------------------------------------
+# Collect all results in single dataframe per dataset
+# ----------------------------------------------------
 rule collect_results:
     input:
-        # no missing, no LD pruning
+        # no missing, no noise, no LD pruning
         pandora_result = rules.run_pandora.output.pandora_result,
         pandora_log = rules.run_pandora.output.pandora_log,
         support_values = rules.run_pandora.output.support_values,
         snp_file = rules.simulate_no_missing.output.snp_file,
         ind_file = rules.simulate_no_missing.output.ind_file,
         geno_file = rules.simulate_no_missing.output.geno_file,
-        # no missing, LD pruning
+        # no missing, no noise, LD pruning
         pandora_result_ld = rules.run_pandora_ld_pruned.output.pandora_result,
         pandora_log_ld = rules.run_pandora_ld_pruned.output.pandora_log,
         support_values_ld = rules.run_pandora_ld_pruned.output.support_values,
         snp_file_ld = rules.plink_to_eigen.output.snp_file,
         ind_file_ld = rules.plink_to_eigen.output.ind_file,
         geno_file_ld = rules.plink_to_eigen.output.geno_file,
-        # missing, LD pruning
+        # missing, no noise, LD pruning
         pandora_result_missing = expand(rules.run_pandora_ld_pruned_missing.output.pandora_result, missing=MISSING, allow_missing=True),
         pandora_log_missing = expand(rules.run_pandora_ld_pruned_missing.output.pandora_log, missing=MISSING, allow_missing=True),
         support_values_missing = expand(rules.run_pandora_ld_pruned_missing.output.support_values, missing=MISSING, allow_missing=True),
         snp_file_missing = expand(rules.add_random_missing_data.output.snp_file, missing=MISSING, allow_missing=True),
         ind_file_missing = expand(rules.add_random_missing_data.output.ind_file, missing=MISSING, allow_missing=True),
         geno_file_missing = expand(rules.add_random_missing_data.output.geno_file, missing=MISSING, allow_missing=True),
+        # no missing, noise, LD pruning
+        pandora_result_noise = expand(rules.run_pandora_ld_pruned_noise.output.pandora_result, noise=NOISE, allow_missing=True),
+        pandora_log_noise = expand(rules.run_pandora_ld_pruned_noise.output.pandora_log, noise=NOISE, allow_missing=True),
+        support_values_noise = expand(rules.run_pandora_ld_pruned_noise.output.support_values, noise=NOISE, allow_missing=True),
+        snp_file_noise = expand(rules.add_random_noise_data.output.snp_file, noise=NOISE, allow_missing=True),
+        ind_file_noise = expand(rules.add_random_noise_data.output.ind_file, noise=NOISE, allow_missing=True),
+        geno_file_noise = expand(rules.add_random_noise_data.output.geno_file, noise=NOISE, allow_missing=True),
     output:
         result_file = OUTDIR / "results.parquet"
     params:
@@ -441,6 +530,7 @@ rule collect_results:
             pathlib.Path(input.snp_file),
             pathlib.Path(input.geno_file),
             0.0,
+            0.0,
             False,
             BOOTSTRAP_CONVERGENCE_CHECK,
             CONVERGENCE_TOLERANCE
@@ -452,6 +542,7 @@ rule collect_results:
             pathlib.Path(input.ind_file_ld),
             pathlib.Path(input.snp_file_ld),
             pathlib.Path(input.geno_file_ld),
+            0.0,
             0.0,
             True,
             BOOTSTRAP_CONVERGENCE_CHECK,
@@ -466,6 +557,7 @@ rule collect_results:
                 pathlib.Path(input.snp_file_missing[MISSING.index(missing)]),
                 pathlib.Path(input.geno_file_missing[MISSING.index(missing)]),
                 missing,
+                0.0,
                 True,
                 BOOTSTRAP_CONVERGENCE_CHECK,
                 CONVERGENCE_TOLERANCE
@@ -474,18 +566,33 @@ rule collect_results:
             in MISSING
         ]
 
-        results = pd.concat([results, results_ld] + results_missing, ignore_index=True)
-        if ALL_POPULATIONS:
-            results["model"] = params.model
-        else:
-            model_population = stdpopsim.get_species(SPECIES).get_demographic_model(params.model).populations[POPULATION_INDEX].name
-            results["model"] = params.model + "_" + model_population
+        results_noise = [
+            collect_data_for_experiment(
+                pathlib.Path(input.pandora_log_noise[NOISE.index(noise)]),
+                pathlib.Path(input.support_values_noise[NOISE.index(noise)]),
+                pathlib.Path(input.ind_file_noise[NOISE.index(noise)]),
+                pathlib.Path(input.snp_file_noise[NOISE.index(noise)]),
+                pathlib.Path(input.geno_file_noise[NOISE.index(noise)]),
+                0.0,
+                noise,
+                True,
+                BOOTSTRAP_CONVERGENCE_CHECK,
+                CONVERGENCE_TOLERANCE
+            )
+            for noise
+            in NOISE
+        ]
+
+        results = pd.concat([results, results_ld] + results_missing + results_noise, ignore_index=True)
+        results["model"] = params.model
         results["exclude_pops"] = str(MODELS[params.model])
         results["seq_len"] = params.seq_len
 
         results.to_parquet(pathlib.Path(output.result_file))
 
-
+# -------------------------------------------------
+# Collect all results for all datasets
+# -------------------------------------------------
 rule collect_all_results:
     input:
         expand(

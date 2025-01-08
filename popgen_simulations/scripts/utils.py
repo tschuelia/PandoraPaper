@@ -71,55 +71,49 @@ def write_pandora_config(
     yaml.dump(config, config_file.open("w"))
 
 
-def get_pandora_results(pandora_log: pathlib.Path, support_values: pathlib.Path):
+def get_psv_summary(support_values: pathlib.Path):
     psvs = pd.read_csv(support_values, index_col=0)
     psvs["sample_id"] = psvs.index
     psvs.reset_index(drop=True, inplace=True)
+    return {
+        "psv_mean": psvs["PSV"].mean(),
+        "psv_median": psvs["PSV"].median(),
+        "psv_std": psvs["PSV"].std(),
+        "psv_min": psvs["PSV"].min(),
+        "psv_max": psvs["PSV"].max(),
+        "psv_q10": psvs["PSV"].quantile(0.10),
+        "psv_q5": psvs["PSV"].quantile(0.05),
+        "psv_q1": psvs["PSV"].quantile(0.01),
+        "psvs": [psvs["PSV"].values],
+    }
+
+
+def get_pandora_results(pandora_log: pathlib.Path, support_values: pathlib.Path):
+    data = {}
 
     for line in pandora_log.open().readlines():
         line = line.strip()
         if line.startswith("Pandora Stability"):
-            psvs["PS"] = float(line.split(":")[1].strip())
+            data["PS"] = float(line.split(":")[1].strip())
         elif line.startswith("Total runtime"):
             # Total runtime: 0:53:06 (3186 seconds)
             _, runtime = line.rsplit("(")
             runtime = runtime.strip("seconds)")
-            psvs["runtime"] = int(runtime)
+            data["runtime"] = int(runtime)
         elif line.startswith("> Number of replicates computed"):
-            psvs["n_replicates"] = int(line.split(":")[1].strip())
+            data["n_replicates"] = int(line.split(":")[1].strip())
         elif line.startswith("> Number of Kmeans clusters"):
-            psvs["n_clusters"] = int(line.split(":")[1].strip())
+            data["n_clusters"] = int(line.split(":")[1].strip())
 
-
-    return psvs
+    data.update(get_psv_summary(support_values))
+    data = pd.DataFrame(data, index=[0])
+    return data
 
 
 def get_n_samples_n_snps(ind_file: pathlib.Path, snp_file: pathlib.Path):
     n_samples = sum(1 for line in ind_file.open() if line.strip())
     n_snps = sum(1 for line in snp_file.open() if line.strip())
     return n_samples, n_snps
-
-
-def get_missing_per_sample(geno_file: pathlib.Path, ind_file: pathlib.Path):
-    sample_ids = []
-    populations = []
-
-    for line in ind_file.open():
-        sid, _, pop = line.strip().split()
-        sample_ids.append(sid.strip())
-        populations.append(pop.strip())
-
-    geno_data = []
-
-    for line in geno_file.open():
-        geno_data.append([int(c) for c in line.strip()])
-
-    geno_data = np.asarray(geno_data).T
-
-    assert geno_data.shape[0] == len(sample_ids) == len(populations), "Incorrect dimensions of geno data"
-
-    missing = np.sum(geno_data == 9, axis=1) / geno_data.shape[1]
-    return pd.DataFrame({"sample_id": sample_ids, "population": populations, "missing_per_sample": missing})
 
 
 def collect_data_for_experiment(
@@ -129,19 +123,19 @@ def collect_data_for_experiment(
         snp_file: pathlib.Path,
         geno_file: pathlib.Path,
         missing_fraction: float,
+        noise_fraction: float,
         ld_pruned: bool,
         convergence: bool,
-        convergence_tolerance: bool,
+        convergence_tolerance: float,
 ):
     results = get_pandora_results(pandora_log, support_values)
     results["missing"] = missing_fraction
+    results["noise"] = noise_fraction
     results["n_samples"], results["n_snps"] = get_n_samples_n_snps(ind_file, snp_file)
     results["ld_pruned"] = ld_pruned
     results["convergence"] = convergence
     results["convergence_tolerance"] = convergence_tolerance
 
-    missing_per_sample = get_missing_per_sample(geno_file, ind_file)
-    results = pd.merge(results, missing_per_sample, on="sample_id")
     return results
 
 
