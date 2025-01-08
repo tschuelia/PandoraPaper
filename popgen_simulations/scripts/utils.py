@@ -1,15 +1,21 @@
-import shutil
-
 import allel
-import numpy as np
+import datetime
+import math
 import pandas as pd
 import pathlib
-import yaml
+import shutil
+import textwrap
+import time
 import uuid
+import yaml
 
 from snakemake import shell
-from pandora.converter import get_filenames, FileFormat
 
+from pandora.bootstrap import bootstrap_and_embed_multiple_numpy
+from pandora.custom_types import EmbeddingAlgorithm
+from pandora.converter import get_filenames, FileFormat
+from pandora.dataset import numpy_dataset_from_eigenfiles
+from pandora.embedding_comparison import BatchEmbeddingComparison
 
 
 def write_ind_file(ts, ind_file: pathlib.Path):
@@ -139,9 +145,7 @@ def collect_data_for_experiment(
     return results
 
 
-def execute_pandora_config(config_file: pathlib.Path):
-    config = yaml.safe_load(config_file.open())
-
+def execute_pandora_config_pca(config):
     dataset_prefix = pathlib.Path(config["dataset_prefix"])
     geno, snp, ind = get_filenames(dataset_prefix, FileFormat.EIGENSTRAT)
 
@@ -173,3 +177,71 @@ def execute_pandora_config(config_file: pathlib.Path):
     # 3. Move the files back to the original target destination
     shell(f"mv {local_result_dir}/* {result_dir}/")
     shell(f"rm -rf {local_tmp_dir}")
+
+
+def execute_pandora_config_mds(config):
+    dataset_prefix = pathlib.Path(config["dataset_prefix"])
+    results_dir = pathlib.Path(config["result_dir"])
+    logfile = results_dir / "pandora.log"
+    sample_support_values_csv = results_dir / "pandora.supportValues.csv"
+    result_file = results_dir / "pandora.txt"
+
+    with logfile.open("w") as f:
+        f.write(f"Starting analysis: {dataset_prefix} (MDS)\n")
+        _start = time.perf_counter()
+        dataset = numpy_dataset_from_eigenfiles(dataset_prefix)
+
+        f.write("Bootstrap and embed multiple\n")
+        f.write(f"Number of bootstraps: {config['n_replicates']}\n")
+        f.write(f"Convergence: {config['bootstrap_convergence_check']} with tolerance {config['bootstrap_convergence_tolerance']}\n")
+        bootstraps = bootstrap_and_embed_multiple_numpy(
+            dataset=dataset,
+            n_bootstraps=config["n_replicates"],
+            embedding=EmbeddingAlgorithm.MDS,
+            n_components=config["n_components"],
+            seed=config["seed"],
+            threads=config["threads"],
+            bootstrap_convergence_check=config["bootstrap_convergence_check"],
+            bootstrap_convergence_tolerance=config["bootstrap_convergence_tolerance"]
+        )
+
+        f.write(f"Number of bootstraps: {len(bootstraps)}\n")
+        f.write("Compare embeddings\n")
+
+        comp = BatchEmbeddingComparison([b.mds for b in bootstraps])
+        ps = comp.compare()
+        psvs = comp.get_sample_support_values(threads=config["threads"])
+
+        _end = time.perf_counter()
+        runtime = math.ceil(_end - _start)
+
+        f.write("Done\n")
+
+        psvs.to_csv(sample_support_values_csv)
+
+        f.write(f"Pandora Stability: {ps}\n")
+        f.write(f"Total runtime: {datetime.timedelta(seconds=runtime)} ({runtime} seconds)\n")
+        f.write(f"> Number of replicates computed: {len(bootstraps)}\n")
+        f.write(f"> Number of Kmeans clusters: {config['kmeans_k']}\n")
+
+    results_string = textwrap.dedent(
+        f"""
+            > Performed Analysis: MDS
+            > Number of replicates computed: {len(bootstraps)}
+            > Number of Kmeans clusters: {config['kmeans_k']}
+
+            ------------------
+            Results
+            ------------------
+            Pandora Stability: {round(ps, 2)}"""
+    )
+
+    result_file.write_text(results_string)
+
+def execute_pandora_config(config_file: pathlib.Path):
+    config = yaml.safe_load(config_file.open())
+
+    if config["embedding_algorithm"] == "PCA":
+        execute_pandora_config_pca(config)
+    else:
+        execute_pandora_config_mds(config)
