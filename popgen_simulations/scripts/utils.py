@@ -62,7 +62,6 @@ def write_pandora_config(
         "n_replicates": n_bootstraps,
         "threads": n_threads,
         "seed": seed,
-        "plot_results": True,
         "kmeans_k": n_populations,
         "smartpca": str(smartpca.absolute()),
         "smartpca_optional_settings": {
