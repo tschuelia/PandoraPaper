@@ -3,6 +3,7 @@ import datetime
 import math
 import pandas as pd
 import pathlib
+import pickle
 import shutil
 import textwrap
 import time
@@ -184,12 +185,16 @@ def execute_pandora_config_mds(config):
     logfile = results_dir / "pandora.log"
     sample_support_values_csv = results_dir / "pandora.supportValues.csv"
     result_file = results_dir / "pandora.txt"
+    bootstrap_dir = results_dir / "bootstraps"
+    bootstrap_dir.mkdir(exist_ok=True)
 
     with logfile.open("w") as f:
         f.write(f"Starting analysis: {dataset_prefix} (MDS)\n")
-        _start = time.perf_counter()
+
+        # Don't count the dataset loading as runtime since this has to be done for all analyses, but NFS might be slow
         dataset = numpy_dataset_from_eigenfiles(dataset_prefix)
 
+        _start = time.perf_counter()
         f.write("Bootstrap and embed multiple\n")
         f.write(f"Number of bootstraps: {config['n_replicates']}\n")
         f.write(f"Convergence: {config['bootstrap_convergence_check']} with tolerance {config['bootstrap_convergence_tolerance']}\n")
@@ -214,6 +219,12 @@ def execute_pandora_config_mds(config):
         _end = time.perf_counter()
         runtime = math.ceil(_end - _start)
 
+        # Store the bootstraps as pickle files
+        for i, b in enumerate(bootstraps):
+            with (bootstrap_dir / f"bootstrap_{i}.pickle").open("wb") as pickle_file:
+                pickle.dump(b, pickle_file)
+
+        f.write(f"Bootstraps stored at {bootstrap_dir}\n")
         f.write("Done\n")
 
         psvs.to_csv(sample_support_values_csv)
