@@ -17,10 +17,17 @@ from pandora.custom_types import FileFormat
 
 # CONFIG
 # ---------------
-dataset_identifier = "Darwins_Ark_Mixed_Breed"
-eigen_prefix = "Dogs/GeneticData/eigenformat/DarwinsArk_gp-0.70_snps-only_maf-0.02_geno-0.20_hwe-midp-1e-20_het-0.25-1.00_N-2155"
+dataset_identifier = "HighlyAdmixedDogs"
+eigen_prefix = "DogGenomes/GeneticData/highly_admixed"
 embedding_populations = None
 file_format = "EIGENSTRAT"
+# We estimate the cluster stability using k = n_populations,
+# set to
+# - None for the HO-West based analyses
+# - 60 for the highly admixed dog dataset
+# - 88 for the purebred dogs
+
+n_populations = 60
 
 algo = "PCA"
 n_components = 10 if algo == "PCA" else 2
@@ -96,7 +103,8 @@ rule run_pandora:
             "embedding_algorithm": algo,
             "n_components": n_components,
             "bootstrap_convergence_check": bootstrap_convergence_check,
-            "bootstrap_convergence_tolerance": convergence_tolerance
+            "bootstrap_convergence_tolerance": convergence_tolerance,
+            "kmeans_k": n_populations,
         }
 
         if emb_file_external is not None:
