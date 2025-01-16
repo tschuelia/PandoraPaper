@@ -12,25 +12,17 @@ from scripts.utils import collect_data_for_experiment, execute_pandora_config, w
     write_pandora_config, write_snp_file
 
 
-# TODO: if you rerun this, make sure to update all paths according to your setup
+# CONFIG
+# ---------------
 PLINK = pathlib.Path("plink")
 
-if "/Users/julia" in os.getcwd():
-    PLINK2 = pathlib.Path("/Users/julia/Software/plink2")
-    CONVERTF = pathlib.Path("/Users/julia/micromamba/envs/trash/bin/convertf")
-    SMARTPCA = pathlib.Path("/Users/julia/micromamba/envs/trash/bin/smartpca")
+PLINK2 = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/plink2")
+CONVERTF = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/convertf")
+SMARTPCA = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/smartpca")
 
-    N_BOOTSTRAPS = 20
-    N_THREADS = 2
-    OUTDIR_PREFIX = pathlib.Path("/tmp/")
-else:
-    PLINK2 = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/plink2")
-    CONVERTF = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/convertf")
-    SMARTPCA = pathlib.Path("/hits/fast/cme/schmidja/micromamba_envs/envs/pandora/bin/smartpca")
-
-    N_BOOTSTRAPS = 100
-    N_THREADS = 20
-    OUTDIR_PREFIX = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/popgen_simulations/")
+N_BOOTSTRAPS = 100
+N_THREADS = 20
+OUTDIR_PREFIX = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/popgen_simulations/")
 
 
 ALGO = "MDS"
@@ -64,6 +56,8 @@ MODELS = {
 SEQ_LENGTHS = ["1e5", "1e6", "1e7", "1e8"]
 MISSING = [0.01, 0.05, 0.1, 0.2, 0.5]
 NOISE = [0.1, 0.2, 0.5]
+
+# ---------------
 
 conv_suffix = f"convergence_{int(CONVERGENCE_TOLERANCE * 100)}" if BOOTSTRAP_CONVERGENCE_CHECK else "no_convergence"
 OUTDIR_PREFIX = OUTDIR_PREFIX / "results" / ALGO / conv_suffix / SPECIES

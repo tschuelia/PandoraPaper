@@ -18,3 +18,4 @@ dependencies:
   - pingouin
   - plotly
   - pandora-geno
+  - eigensoft

@@ -37,9 +37,10 @@ n_threads = 20
 seed = 42
 bootstrap_convergence_check = True
 convergence_tolerance = 0.05
+external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
+
 # ---------------
 
-external = pathlib.Path("/hits/fast/cme/schmidja/Pandora/PandoraPaper/empirical")
 dataset_prefix = external / "datasets" / eigen_prefix
 
 geno_file_external, snp_file_external, ind_file_external = get_filenames(dataset_prefix, FileFormat(file_format))
