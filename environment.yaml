@@ -9,9 +9,12 @@ dependencies:
   - numpy
   - scipy
   - pyreadr
+  - pyyaml
   - fastparquet
   - snakemake
-  - pandora-geno
   - scikit-learn
   - scikit-allel
   - stdpopsim
+  - pingouin
+  - plotly
+  - pandora-geno
