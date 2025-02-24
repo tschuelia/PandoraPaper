@@ -72,7 +72,14 @@ The directory follows this structure:
 
 ```text
 ├── empirical_datasets 
-│   ├── TODO
+│   ├── HO-Cayonu
+    │   ├── HO-Cayonu.pandora.parquet
+    │   ├── bootstrap_{3,11}.{eval,evec}
+    │   ├── HO-Cayonu.{eval,evec}
+    │   └── modern.poplist.txt  # names of the HO-West modern populations
+    └── DogGenomes
+        ├── HighlyAdmixedDogs.pandora.parquet
+        └── PureBredDogs.pandora.parquet
 └── simulated_datasets 
     ├── {model} / {seq_len}
     ├── dataset.{ind,geno,snp}
